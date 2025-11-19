@@ -154,6 +154,8 @@
         import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'; // Cargador para modelos 3D (personaje)
         //import { SkeletonUtils } from 'three/addons/utils/SkeletonUtils.js'; // <-- ¡AÑADE ESTA LÍNEA!
         import { AnimationMixer } from 'three'; // Reproductor de animaciones
+        import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/webxr/VRButton.js';
+        window.VRButton = VRButton; // Hacerlo global para tu script
 
         // -------------------------------------------------------------------
         // ---------- 🚀 CONFIGURACIÓN GLOBAL DEL JUEGO ----------
@@ -251,7 +253,18 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true; // Activar sombras
+            // --- ACTIVAR VR ---
+            renderer.xr.enabled = true;
+            document.body.appendChild(VRButton.createButton(renderer));
             document.body.appendChild(renderer.domElement); // Añadir <canvas> al HTML
+
+            const controller1 = renderer.xr.getController(0);
+            controller1.addEventListener('selectstart', handleShoot); // tu función de disparo
+            scene.add(controller1);
+
+            const controller2 = renderer.xr.getController(1);
+            controller2.addEventListener('selectstart', handleShoot);
+            scene.add(controller2);
 
             // Medidor de FPS
             stats = new Stats();
@@ -781,125 +794,129 @@
         // ---------- 11. FÍSICA Y MOVIMIENTO DEL JUGADOR ----------
         // Se ejecuta en cada frame. Mueve al jugador y comprueba colisiones
         // -------------------------------------------------------------------
-        function updatePlayerMovement(dt) {
-            if (!controls.isLocked) return; // No moverse si el cursor no está bloqueado
+    function updatePlayerMovement(dt) {
+        const speed = CONFIG.PLAYER_SPEED; // Puedes añadir sprint si quieres con un botón del controlador
+        const moveForward = new THREE.Vector3();
+        const moveRight = new THREE.Vector3();
 
-            // Aplicar velocidad de "correr" (sprint) si se presiona Shift
-            const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? CONFIG.PLAYER_SPRINT_SPEED : CONFIG.PLAYER_SPEED;
+        // Dirección hacia donde mira la cámara
+        camera.getWorldDirection(moveForward);
+        moveForward.y = 0;
+        moveForward.normalize();
+        moveRight.crossVectors(new THREE.Vector3(0,1,0), moveForward).normalize();
 
-            // Obtener dirección de la cámara (hacia dónde mira el jugador)
-            const moveForward = new THREE.Vector3();
-            const moveRight = new THREE.Vector3();
-            controls.getDirection(moveForward);
-            moveRight.crossVectors(upVector, moveForward).normalize(); // Vector "derecha"
-            moveForward.y = 0; // No volar
-            moveForward.normalize();
-            
-            // Aplicar fricción (damping) para desacelerar
-            playerVelocity.x *= CONFIG.PLAYER_DAMPING;
-            playerVelocity.z *= CONFIG.PLAYER_DAMPING;
+        // --- Input VR ---
+        let vrDir = new THREE.Vector3(0, 0, 0);
 
-            // Aplicar gravedad
-            playerVelocity.y += CONFIG.GRAVITY * dt;
+        if (controller1 && controller1.userData.gamepad) {
+            const gp = controller1.userData.gamepad;
+            // gp.axes[2] -> izquierda/derecha, gp.axes[3] -> adelante/atrás
+            vrDir.x = gp.axes[2]; // izquierda/derecha
+            vrDir.z = gp.axes[3]; // adelante/atrás
+        }
 
-            // Aplicar movimiento basado en teclas (WASD)
-            if (keys['KeyW']) playerVelocity.addScaledVector(moveForward, speed * dt);
-            if (keys['KeyS']) playerVelocity.addScaledVector(moveForward, -speed * dt);
-            if (keys['KeyA']) playerVelocity.addScaledVector(moveRight, speed * dt);
-            if (keys['KeyD']) playerVelocity.addScaledVector(moveRight, -speed * dt);
+        // Aplicar movimiento horizontal basado en joystick
+        playerVelocity.x += moveRight.x * -vrDir.x * speed * dt + moveForward.x * -vrDir.z * speed * dt;
+        playerVelocity.z += moveRight.z * -vrDir.x * speed * dt + moveForward.z * -vrDir.z * speed * dt;
 
-            // Saltar (solo si está en el suelo)
-            if (keys['Space'] && playerOnGround) {
+        // Aplicar gravedad
+        playerVelocity.y += CONFIG.GRAVITY * dt;
+
+        // --- Lógica de Colisión (AABB) ---
+        const delta = playerVelocity.clone().multiplyScalar(dt);
+        const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
+
+        // 1. Actualizar hitbox
+        playerCollider.setFromCenterAndSize(
+            camera.position,
+            new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
+        );
+
+        // 2. Colisión eje Y
+        const futureYCollider = playerCollider.clone().translate(new THREE.Vector3(0, delta.y, 0));
+        let playerOnGround = false;
+
+        for (const obj of physicsObjects) {
+            if (futureYCollider.intersectsBox(obj.boundingBox)) {
+                if (playerVelocity.y < 0) {
+                    playerOnGround = true;
+                    camera.position.y = obj.boundingBox.max.y + playerHalfHeight;
+                }
+                playerVelocity.y = 0;
+                delta.y = 0;
+                break;
+            }
+        }
+
+        // 3. Colisión eje X
+        const futureXCollider = playerCollider.clone().translate(new THREE.Vector3(delta.x, 0, 0));
+        for (const obj of physicsObjects) {
+            if (futureXCollider.intersectsBox(obj.boundingBox)) {
+                playerVelocity.x = 0;
+                delta.x = 0;
+                break;
+            }
+        }
+
+        // 4. Colisión eje Z
+        const futureZCollider = playerCollider.clone().translate(new THREE.Vector3(0, 0, delta.z));
+        for (const obj of physicsObjects) {
+            if (futureZCollider.intersectsBox(obj.boundingBox)) {
+                playerVelocity.z = 0;
+                delta.z = 0;
+                break;
+            }
+        }
+
+        // 5. Aplicar movimiento
+        camera.position.add(delta);
+
+        // 6. Evitar caer por debajo del suelo
+        if (camera.position.y < playerHalfHeight) {
+            playerVelocity.y = 0;
+            camera.position.y = playerHalfHeight;
+            playerOnGround = true;
+        }
+
+        // 7. Chequear llegada a la meta
+        const goal = scene.userData.goal;
+        if (goal && playerLife > 0) {
+            const distGoal = camera.position.distanceTo(goal.position);
+            if (distGoal < 50) {
+                showMessage('¡GANASTE!\n<span style="font-size: 18px">Llegaste al portal</span>', 7000);
+                controls.unlock();
+                playerLife = -1; // Evitar ganar/morir de nuevo
+            }
+        }
+
+        // --- Saltar (botón del controlador) ---
+        if (controller1 && controller1.userData.gamepad) {
+            const gp = controller1.userData.gamepad;
+            // Suponiendo botón 0 (trigger principal) como salto
+            if (gp.buttons[0].pressed && playerOnGround) {
                 playerVelocity.y = CONFIG.PLAYER_JUMP_FORCE;
                 playerOnGround = false;
             }
-
-            // --- Lógica de Colisión (AABB - Axis-Aligned Bounding Box) ---
-            const delta = playerVelocity.clone().multiplyScalar(dt); // Movimiento de este frame
-            const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
-            
-            // 1. Actualizar el "hitbox" del jugador a su posición actual
-            playerCollider.setFromCenterAndSize(
-                camera.position,
-                new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
-            );
-
-            // 2. Comprobar Eje Y (Vertical) PRIMERO
-            const futureYCollider = playerCollider.clone().translate(new THREE.Vector3(0, delta.y, 0));
-            playerOnGround = false; // Asumir que no está en el suelo
-            for (const obj of physicsObjects) {
-                if (futureYCollider.intersectsBox(obj.boundingBox)) {
-                    if (playerVelocity.y < 0) { // Si está cayendo
-                        playerOnGround = true; // Tocó el suelo
-                        // Ajustar posición para que quede "sobre" el objeto
-                        camera.position.y = obj.boundingBox.max.y + playerHalfHeight;
-                    }
-                    playerVelocity.y = 0; // Detener movimiento vertical
-                    delta.y = 0;          // Cancelar movimiento Y para este frame
-                    break; // Salir del bucle
-                }
-            }
-            
-            // 3. Comprobar Eje X (Horizontal)
-            const futureXCollider = playerCollider.clone().translate(new THREE.Vector3(delta.x, 0, 0));
-            for (const obj of physicsObjects) {
-                if (futureXCollider.intersectsBox(obj.boundingBox)) {
-                    playerVelocity.x = 0; // Detener velocidad X
-                    delta.x = 0;          // Cancelar movimiento X
-                    break;
-                }
-            }
-            
-            // 4. Comprobar Eje Z (Horizontal)
-            const futureZCollider = playerCollider.clone().translate(new THREE.Vector3(0, 0, delta.z));
-            for (const obj of physicsObjects) {
-                if (futureZCollider.intersectsBox(obj.boundingBox)) {
-                    playerVelocity.z = 0; // Detener velocidad Z
-                    delta.z = 0;          // Cancelar movimiento Z
-                    break;
-                }
-            }
-
-            // 5. Aplicar el movimiento (ya corregido por colisiones)
-            camera.position.add(delta);
-
-            // 6. Seguridad para no caer por el suelo (por si falla la colisión Y)
-            if (camera.position.y < playerHalfHeight) {
-                playerVelocity.y = 0;
-                camera.position.y = playerHalfHeight;
-                playerOnGround = true;
-            }
-
-            // 7. Chequear llegada a la meta
-            const goal = scene.userData.goal;
-            if (goal && playerLife > 0) { // Solo ganar si estás vivo
-                const distGoal = camera.position.distanceTo(goal.position);
-                if (distGoal < 50) {
-                    showMessage('¡GANASTE!\n<span style="font-size: 18px">Llegaste al portal</span>', 7000);
-                    controls.unlock();
-                    playerLife = -1; // Poner vida negativa para evitar que se gane/muera de nuevo
-                    // (Comentado porque onMouseDown fue eliminado)
-                    // window.removeEventListener('mousedown', onMouseDown);
-                }
-            }
         }
+    }
+
 
         // -------------------------------------------------------------------
         // ---------- 12. LOOP PRINCIPAL (animate) ----------
         // Se ejecuta 60 veces por segundo. Mueve todo y dibuja la pantalla.
         // -------------------------------------------------------------------
+        // -------------------------------------------------------------------
+
         function animate() {
-            requestAnimationFrame(animate); // Pedir el próximo frame
-            
             const dt = clock.getDelta(); // Obtener el tiempo desde el último frame
-        
+
             // 1. Actualizar Lógica (Física, IA, Animaciones)
             if (playerLife > 0) { // Solo actualizar si el jugador está vivo
                 updatePlayerMovement(dt);
                 stepPhysics(dt);
             }
             if (mixer) mixer.update(dt); // Actualizar animaciones
-        
+
             // 2. Sincronizar modelo 3D con la cámara FPS
             if (playerModel) {
                 playerModel.position.copy(camera.position);
@@ -907,65 +924,70 @@
                 // Ajuste visual para alinear el modelo 3D con la cámara
                 playerModel.position.y -= CONFIG.PLAYER_HEIGHT / 2 - 2; 
             }
-        
-            // 3. Sincronizar la cámara de tercera persona (de la esquina)
-            if (playerModel && thirdPersonCamera) {
+
+            // 3. Sincronizar la cámara de tercera persona (de la esquina) solo si NO es VR
+            if (!renderer.xr.isPresenting && playerModel && thirdPersonCamera) {
                 const offset = new THREE.Vector3(0, 40, 60); // Distancia detrás y arriba
                 offset.applyQuaternion(playerModel.quaternion); // Rotar el offset con el jugador
                 thirdPersonCamera.position.copy(playerModel.position).add(offset);
                 thirdPersonCamera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 20, 0))); // Mirar al pecho
             }
-        
-            // 4. Renderizado (Dibujar la escena)
+
+            // 4. Renderizado
             renderer.autoClear = false; // Desactivar limpieza automática
             renderer.clear();
 
-            // --- Calcular el "Head Bob" (bamboleo) ---
+            // --- Calcular el "Head Bob" solo para no VR ---
             let bobOffset = 0;
-            if (playerRootBone && playerModel && playerLife > 0) {
-                // Leer la posición Y del hueso (modificada por la animación)
+            if (!renderer.xr.isPresenting && playerRootBone && playerModel && playerLife > 0) {
                 const currentRootY = playerRootBone.position.y;
-                // La diferencia con la altura original es el bamboleo
-                bobOffset = (currentRootY - defaultRootY) * playerModel.scale.y; 
+                bobOffset = (currentRootY - defaultRootY) * playerModel.scale.y;
             }
-        
-            // --- RENDER 1: Vista Principal (FPS) ---
-            if (playerModel) playerModel.visible = false; // El jugador es invisible en 1ra persona
-            
-            renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-            renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
-            renderer.setScissorTest(true);
-            
-            // ¡MAGIA! Aplicar el bamboleo temporalmente a la cámara
-            camera.position.y += bobOffset; 
-            renderer.render(scene, camera); // Renderizar
-            camera.position.y -= bobOffset; // ¡Deshacer el bamboleo!
-            // --- Fin de la Magia ---
 
-            // --- RENDER 2: Vista de Esquina (Tercera Persona) ---
-            if (playerModel && thirdPersonCamera) {
-                playerModel.visible = true; // El jugador SÍ es visible en 3ra persona
+            // --- RENDER PRINCIPAL ---
+            if (!renderer.xr.isPresenting) {
+                // FPS normal
+                if (playerModel) playerModel.visible = false; // Invisible en 1ra persona
 
-                // Definir el tamaño de la esquina
+                renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+                renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
+                renderer.setScissorTest(true);
+
+                camera.position.y += bobOffset;
+                renderer.render(scene, camera);
+                camera.position.y -= bobOffset;
+            } else {
+                // VR: renderiza automáticamente ambos ojos
+                renderer.render(scene, camera);
+            }
+
+            // --- RENDER 2: Vista de esquina (solo no VR) ---
+            if (!renderer.xr.isPresenting && playerModel && thirdPersonCamera) {
+                playerModel.visible = true; // Visible en 3ra persona
                 const w = window.innerWidth * 0.20;
                 const h = window.innerHeight * 0.20;
-                const x = window.innerWidth - w - 20; // 20px de padding derecho
-                const y = 20;                         // 20px de padding inferior
-                
+                const x = window.innerWidth - w - 20;
+                const y = 20;
+
                 renderer.clearDepth(); // Limpiar solo la profundidad
-                
-                // Configurar el "viewport" (ventana) de la esquina
                 renderer.setViewport(x, y, w, h);
                 renderer.setScissor(x, y, w, h);
                 renderer.setScissorTest(true);
 
-                renderer.render(scene, thirdPersonCamera); // Renderizar la esquina
+                renderer.render(scene, thirdPersonCamera);
             }
-            
+
             renderer.autoClear = true; // Reactivar limpieza
-        
             stats.update(); // Actualizar medidor de FPS
         }
+
+        // ---------------------------------------------------
+        // Configuración para VR
+        // ---------------------------------------------------
+        renderer.xr.enabled = true; // Activar VR
+        document.body.appendChild(VRButton.createButton(renderer)); // Botón de entrada a VR
+        renderer.setAnimationLoop(animate); // Llama a animate automáticamente en VR
+
 
         // -------------------------------------------------------------------
         // ---------- 13. UTILIDADES ----------
@@ -986,6 +1008,73 @@
 
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
+
+        // ---------- 14. HUD 3D VR (con vida, enemigos y objetivo) ----------
+
+        // 1️⃣ Crear canvas
+        const hudCanvas = document.createElement('canvas');
+        hudCanvas.width = 512;
+        hudCanvas.height = 256; // Más alto para meter enemigos y texto
+        const hudCtx = hudCanvas.getContext('2d');
+
+        // 2️⃣ Crear textura y material
+        const hudTexture = new THREE.CanvasTexture(hudCanvas);
+        const hudMaterial = new THREE.MeshBasicMaterial({ map: hudTexture, transparent: true });
+
+        // 3️⃣ Crear plano 3D
+        const hudPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.75), hudMaterial);
+        hudPlane.position.set(0, 0, -2); // 2 unidades adelante
+        camera.add(hudPlane);
+        scene.add(camera);
+
+        // 4️⃣ Función para actualizar HUD
+        function updateHUD() {
+            hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+
+            // Fondo semi-transparente
+            hudCtx.fillStyle = 'rgba(0,0,0,0.5)';
+            hudCtx.fillRect(0, 0, hudCanvas.width, hudCanvas.height);
+
+            // Vida del jugador
+            hudCtx.fillStyle = 'white';
+            hudCtx.font = '48px Arial';
+            hudCtx.fillText(`Vida: ${playerLife}`, 20, 60);
+
+            // Enemigos restantes
+            const aliveEnemies = enemies.filter(e => e.userData && e.userData.alive).length;
+            hudCtx.fillText(`Enemigos: ${aliveEnemies}`, 20, 120);
+
+            // Objetivo
+            hudCtx.font = '28px Arial';
+            hudCtx.fillStyle = 'yellow';
+            hudCtx.fillText('Objetivo: llegar al portal al final del laberinto', 20, 180);
+
+            // Mensaje temporal (opcional)
+            if (messageEl.textContent) {
+                hudCtx.fillStyle = 'cyan';
+                hudCtx.font = '32px Arial';
+                hudCtx.fillText(messageEl.textContent, 20, 220);
+            }
+
+            hudTexture.needsUpdate = true;
+        }
+
+        // 5️⃣ Llamar a updateHUD() dentro de tu animate()
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const dt = clock.getDelta();
+            if (playerLife > 0) {
+                updatePlayerMovement(dt);
+                stepPhysics(dt);
+            }
+            if (mixer) mixer.update(dt);
+
+            updateHUD(); // actualizar HUD 3D
+
+            renderer.render(scene, camera);
+        }
+
 
     </script>
 </body>
