@@ -8,6 +8,78 @@
     <link rel="icon" type="image/png" href="assets/icono.png">
     
     <style>
+        /* -------- PORTADA INICIAL -------- */
+            #portada {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.85);
+                background-size: cover;
+                background-blend-mode: overlay;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 999;
+                text-align: center;
+                padding: 20px;
+            }
+
+            #portada-content {
+                max-width: 700px;
+                background: rgba(0,0,0,0.6);
+                padding: 40px;
+                border-radius: 14px;
+                box-shadow: 0 0 20px rgba(0,255,150,0.4);
+                border: 1px solid #22ff88;
+            }
+
+            #portada h1 {
+                font-size: 48px;
+                color: #22ff88;
+                margin-bottom: 10px;
+            }
+
+            #portada .sub {
+                font-size: 18px;
+                margin-bottom: 18px;
+                color: #ccc;
+            }
+
+            #portada h2 {
+                margin-top: 20px;
+                color: #22ff88;
+            }
+
+            #portada ul {
+                list-style: none;
+                padding: 0;
+            }
+
+            #portada ul li {
+                margin: 6px 0;
+            }
+
+            #portada .equipo {
+                color: #ddd;
+                line-height: 1.6;
+            }
+
+            #startBtn {
+                margin-top: 28px;
+                padding: 12px 32px;
+                font-size: 18px;
+                border: none;
+                background: #22ff88;
+                color: #000;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: 0.2s ease;
+                font-weight: bold;
+            }
+
+            #startBtn:hover {
+                background: #44ffaa;
+            }
+
         /* Estilos generales del cuerpo: tipografía Arial, fondo negro, sin márgenes */
         body { margin:0; background:#000; color:#fff; font-family: Arial, sans-serif; overflow:hidden; }
         
@@ -96,14 +168,40 @@
         }
     </script>
 </head>
+
 <body>
-    
+    <audio id="shootSound" src="assets/Disparo.mp3"></audio>
+    <audio id="enemyDeathSound" src="assets/Explosion.mp3"></audio>
     <audio id="backgroundMusic" autoplay loop="">
         <source src="assets/musica.mp3" type="audio/mpeg">
     </audio>
-    <div id="info">
-        (Click para bloquear el cursor)
+
+<!-- PORTADA INICIAL -->
+<div id="portada">
+    <div id="portada-content">
+        <h1>Alienrinto</h1>
+
+        <p class="sub">Laberinto Alienígena – Juego 3D en VR</p>
+
+        <h2>Instrucciones</h2>
+        <ul>
+            <li>Usa <strong>W A S D</strong> para moverte</li>
+            <li>Presiona <strong>F</strong> para disparar</li>
+            <li>Click para bloquear el cursor</li>
+            <li>Llega al portal sin que los aliens te maten</li>
+        </ul>
+
+        <h2>Integrantes del Equipo</h2>
+        <p class="equipo">
+            23200860 – Márquez Zempoalteca Judith<br>
+            23200823 – Cruz Monter Sergio Eloy<br>
+            23200904 – Veloz Pérez Mariana
+        </p>
+
+        <button id="startBtn">Iniciar Juego</button>
     </div>
+</div>
+
 
     <div id="hud">
         <div><strong>Vida:</strong> <span id="life">100</span></div>
@@ -115,7 +213,7 @@
 
     <div class="crosshair"></div>
 
-    <footer>
+   <!--<footer>
         <div>
             <h1>Alienrinto: Laberinto Alienígena</h1>
             
@@ -141,7 +239,7 @@
                 23200904 - Veloz Pérez Mariana
             </div>
         </div>
-    </footer>
+    </footer>--> 
 
     <div id="stats-container"></div>
 
@@ -203,6 +301,9 @@
         // ---------- Variables Globales del Programa ----------
         // -------------------------------------------------------------------
         let camera, scene, renderer, stats, controls, clock; // Núcleo de Three.js
+        let controller1, controller2;
+        let hudCtx, hudCanvas, hudTexture;
+
         const keys = {};                 // Objeto para guardar qué teclas están presionadas
         const physicsObjects = [];       // Array de objetos con colisión (paredes, enemigos)
         const enemies = [];              // Array para guardar solo los enemigos
@@ -258,11 +359,11 @@
             document.body.appendChild(VRButton.createButton(renderer));
             document.body.appendChild(renderer.domElement); // Añadir <canvas> al HTML
 
-            const controller1 = renderer.xr.getController(0);
+            controller1 = renderer.xr.getController(0);
             controller1.addEventListener('selectstart', handleShoot); // tu función de disparo
             scene.add(controller1);
 
-            const controller2 = renderer.xr.getController(1);
+            controller2 = renderer.xr.getController(1);
             controller2.addEventListener('selectstart', handleShoot);
             scene.add(controller2);
 
@@ -386,6 +487,30 @@
             controls.addEventListener('unlock', () => showMessage('Controles bloqueados', 1500));
             // Añadir el "objeto" de controles (la cámara) a la escena
             scene.add(controls.getObject());
+
+            // ---------- HUD 3D VR (con vida, enemigos y objetivo) ----------
+            hudCanvas = document.createElement('canvas');
+            hudCanvas.width = 512;
+            hudCanvas.height = 256;
+
+            hudCtx = hudCanvas.getContext('2d');
+
+            hudTexture = new THREE.CanvasTexture(hudCanvas);
+            const hudMaterial = new THREE.MeshBasicMaterial({
+                map: hudTexture,
+                transparent: true
+            });
+
+            const hudPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(1.5, 0.75),
+                hudMaterial
+            );
+            hudPlane.position.set(0, 0, -2);
+
+            // Lo añadimos a la cámara (HUD fijo en VR)
+            camera.add(hudPlane);
+            scene.add(camera);
+
 
             // Configuración de Luces
             const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7); // Luz ambiental suave
@@ -578,84 +703,111 @@
         // ---------- 5. LÓGICA DE DISPARO ----------
         // -------------------------------------------------------------------
         function handleShoot() {
-            if (!controls.isLocked) return; // No disparar si el cursor no está bloqueado
+                if (!controls.isLocked) return;
 
-            // 1. Crear el "rayo láser" desde la cámara
-            const origin = camera.position;
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
-            raycaster.set(origin, dir);
-            raycaster.far = CONFIG.SHOOT_RANGE;
+                // SONIDO DE DISPARO
+                if (shootSound) {
+                    shootSound.currentTime = 0;
+                    shootSound.play();
+                }
 
-            // 2. Comprobar colisiones del rayo (solo con objetos en 'physicsObjects')
-            const shootableObjects = physicsObjects.map(p => p.mesh);
-            const hits = raycaster.intersectObjects(shootableObjects, true);
+                // 1. Crear el rayo láser
+                const origin = camera.position;
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                raycaster.set(origin, dir);
+                raycaster.far = CONFIG.SHOOT_RANGE;
 
-            let hitEnemy = false;
-            
-            if (hits.length > 0) {
-                const hit = hits[0];
-                
-                // 3. Comprobar si el objeto golpeado es un enemigo
-                let target = hit.object;
-                while (target && !enemies.includes(target)) target = target.parent; // Buscar el padre si golpeamos una sub-malla
+                // 2. Checar colisiones
+                const shootableObjects = physicsObjects.map(p => p.mesh);
+                const hits = raycaster.intersectObjects(shootableObjects, true);
 
-                if (target && target.userData && target.userData.alive) {
-                    // 4a. ¡Golpe a enemigo!
-                    hitEnemy = true;
-                    applyDamageToEnemy(target, CONFIG.SHOOT_DAMAGE);
-                    // Efecto visual de impacto (esfera amarilla)
-                    const p = new THREE.Mesh(new THREE.SphereGeometry(4, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffff66 }));
-                    p.position.copy(hit.point);
-                    scene.add(p);
-                    setTimeout(() => scene.remove(p), 120); // Desaparece rápido
-                } else {
-                    // 4b. ¡Golpe a pared!
-                    // Efecto visual de impacto (esfera naranja)
-                    const p = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffcc88 }));
-                    p.position.copy(hit.point);
+                let hitEnemy = false;
+
+                if (hits.length > 0) {
+                    const hit = hits[0];
+
+                    // Buscar si golpeó enemigo
+                    let target = hit.object;
+                    while (target && !enemies.includes(target)) target = target.parent;
+
+                    if (target && target.userData && target.userData.alive) {
+                        hitEnemy = true;
+                        applyDamageToEnemy(target, CONFIG.SHOOT_DAMAGE);
+
+                        // Impacto amarillo
+                        const p = new THREE.Mesh(
+                            new THREE.SphereGeometry(4, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: 0xffff66 })
+                        );
+                        p.position.copy(hit.point);
+                        scene.add(p);
+                        setTimeout(() => scene.remove(p), 120);
+
+                    } else {
+                        // Impacto en pared
+                        const p = new THREE.Mesh(
+                            new THREE.SphereGeometry(2.5, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: 0xffcc88 })
+                        );
+                        p.position.copy(hit.point);
+                        scene.add(p);
+                        setTimeout(() => scene.remove(p), 120);
+                    }
+                }
+
+                // Si no golpea nada → efecto gris
+                if (!hitEnemy && hits.length === 0) {
+                    const missPoint = origin.clone().add(dir.multiplyScalar(CONFIG.SHOOT_RANGE));
+                    const p = new THREE.Mesh(
+                        new THREE.SphereGeometry(2.5, 8, 8),
+                        new THREE.MeshBasicMaterial({ color: 0x666666 })
+                    );
+                    p.position.copy(missPoint);
                     scene.add(p);
                     setTimeout(() => scene.remove(p), 120);
                 }
             }
-            
-            // 4c. ¡Fallo! (No golpeó nada)
-            if (!hitEnemy && hits.length === 0) {
-                // Efecto visual (esfera gris al final del rango)
-                const missPoint = origin.clone().add(dir.multiplyScalar(CONFIG.SHOOT_RANGE));
-                const p = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0x666666 }));
-                p.position.copy(missPoint);
-                scene.add(p);
-                setTimeout(() => scene.remove(p), 120);
-            }
-        }
+
 
         // -------------------------------------------------------------------
         // ---------- 6. APLICAR DAÑO A ENEMIGO ----------
         // -------------------------------------------------------------------
         function applyDamageToEnemy(enemy, amount) {
-            if (!enemy.userData) return;
-            enemy.userData.health -= amount; // Restar vida
+        if (!enemy.userData) return;
+        enemy.userData.health -= amount;
 
-            // Efecto visual: parpadeo rojo
-            enemy.material.emissive = new THREE.Color(0xff0000);
-            setTimeout(() => { if(enemy.material) enemy.material.emissive = new THREE.Color(0x000000); }, 120);
+        // Parpadeo rojo
+        enemy.material.emissive = new THREE.Color(0xff0000);
+        setTimeout(() => { 
+            if (enemy.material) enemy.material.emissive = new THREE.Color(0x000000);
+        }, 120);
 
-            // Comprobar si murió
-            if (enemy.userData.health <= 0 && enemy.userData.alive) {
-                enemy.userData.alive = false; // Marcar como muerto
-                enemy.rotation.z = Math.PI / 2; // "Tirarlo"
-                enemy.material.color.set(0x333333); // Oscurecerlo
-                
-                // Quitarlo de la lista de colisiones de física
-                const idx = physicsObjects.findIndex(p => p.mesh === enemy);
-                if (idx >= 0) physicsObjects.splice(idx, 1);
-                
-                // Hacer que desaparezca después de un tiempo
-                setTimeout(() => { scene.remove(enemy); updateEnemiesHUD(); }, 1200);
+        // ¿Murió?
+        if (enemy.userData.health <= 0 && enemy.userData.alive) {
+            enemy.userData.alive = false;
+
+            //SONIDO DE MUERTE
+            if (enemyDeathSound) {
+                enemyDeathSound.currentTime = 0;
+                enemyDeathSound.play();
             }
-            updateEnemiesHUD(); // Actualizar contador
+
+            enemy.rotation.z = Math.PI / 2;
+            enemy.material.color.set(0x333333);
+
+            // Quitar de la física
+            const idx = physicsObjects.findIndex(p => p.mesh === enemy);
+            if (idx >= 0) physicsObjects.splice(idx, 1);
+
+            setTimeout(() => { 
+                scene.remove(enemy); 
+                updateEnemiesHUD(); 
+            }, 1200);
         }
+
+        updateEnemiesHUD();
+    }
 
         // -------------------------------------------------------------------
         // ---------- 7. MANEJO DE ENTRADAS (Input) ----------
@@ -908,6 +1060,7 @@
         // -------------------------------------------------------------------
 
         function animate() {
+            requestAnimationFrame(animate);
             const dt = clock.getDelta(); // Obtener el tiempo desde el último frame
 
             // 1. Actualizar Lógica (Física, IA, Animaciones)
@@ -916,6 +1069,9 @@
                 stepPhysics(dt);
             }
             if (mixer) mixer.update(dt); // Actualizar animaciones
+            updateHUD(); // actualizar HUD 3D
+
+            renderer.render(scene, camera);
 
             // 2. Sincronizar modelo 3D con la cámara FPS
             if (playerModel) {
@@ -1009,23 +1165,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // ---------- 14. HUD 3D VR (con vida, enemigos y objetivo) ----------
-
-        // 1️⃣ Crear canvas
-        const hudCanvas = document.createElement('canvas');
-        hudCanvas.width = 512;
-        hudCanvas.height = 256; // Más alto para meter enemigos y texto
-        const hudCtx = hudCanvas.getContext('2d');
-
-        // 2️⃣ Crear textura y material
-        const hudTexture = new THREE.CanvasTexture(hudCanvas);
-        const hudMaterial = new THREE.MeshBasicMaterial({ map: hudTexture, transparent: true });
-
-        // 3️⃣ Crear plano 3D
-        const hudPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.75), hudMaterial);
-        hudPlane.position.set(0, 0, -2); // 2 unidades adelante
-        camera.add(hudPlane);
-        scene.add(camera);
 
         // 4️⃣ Función para actualizar HUD
         function updateHUD() {
@@ -1059,23 +1198,13 @@
             hudTexture.needsUpdate = true;
         }
 
-        // 5️⃣ Llamar a updateHUD() dentro de tu animate()
-        function animate() {
-            requestAnimationFrame(animate);
+            document.getElementById("startBtn").addEventListener("click", () => {
+            document.getElementById("portada").style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById("portada").style.display = "none";
+            }, 500);
+        });
+</script>
 
-            const dt = clock.getDelta();
-            if (playerLife > 0) {
-                updatePlayerMovement(dt);
-                stepPhysics(dt);
-            }
-            if (mixer) mixer.update(dt);
-
-            updateHUD(); // actualizar HUD 3D
-
-            renderer.render(scene, camera);
-        }
-
-
-    </script>
 </body>
 </html>
