@@ -332,6 +332,10 @@
 
 
         let controllerRight;
+
+        let vrMove = new THREE.Vector3();
+        let vrRotation = 0;
+
         // Iniciar el juego
         init();
         animate();
@@ -361,26 +365,14 @@
 
         // === CONTROLES VR (META QUEST 3) ===
 
-        // Creamos ambos controllers (Quest los asigna automáticamente)
+        // --- Controladores VR: disparo + movimiento ---
         controller1 = renderer.xr.getController(0);
+        controller1.addEventListener('selectstart', handleShoot);
+        controller1.addEventListener('connected', (e) => { controller1.inputSource = e.data; });
+
         controller2 = renderer.xr.getController(1);
-
-        // Identificar cuál es la mano derecha y activar el gatillo
-        controller1.addEventListener('connected', (event) => {
-            if (event.data.handedness === 'right') {
-                controllerRight = controller1;
-                controllerRight.addEventListener('selectstart', handleShoot);
-                console.log("Control derecho conectado en controller1");
-            }
-        });
-
-        controller2.addEventListener('connected', (event) => {
-            if (event.data.handedness === 'right') {
-                controllerRight = controller2;
-                controllerRight.addEventListener('selectstart', handleShoot);
-                console.log("Control derecho conectado en controller2");
-            }
-        });
+        controller2.addEventListener('selectstart', handleShoot);
+        controller2.addEventListener('connected', (e) => { controller2.inputSource = e.data; });
 
         // Añadimos ambos a la escena (aunque solo usamos uno)
         scene.add(controller1);
@@ -724,22 +716,55 @@
         // ---------- 5. LÓGICA DE DISPARO ----------
         // -------------------------------------------------------------------
         function handleShoot() {
-    if (!controls.isLocked) return;
+        if (!controls.isLocked) return;
 
-    const origin = camera.position.clone();
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
+        const origin = camera.position.clone();
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir);
 
-    raycaster.set(origin, dir);
-    raycaster.far = CONFIG.SHOOT_RANGE;
+        raycaster.set(origin, dir);
+        raycaster.far = CONFIG.SHOOT_RANGE;
 
-    const intersects = raycaster.intersectObjects(scene.children, true);
+        const intersects = raycaster.intersectObjects(scene.children, true);
 
-    if (intersects.length > 0) {
-        const hit = intersects[0];
-        console.log("🔥 Impacto en:", hit.object.name);
+        if (intersects.length > 0) {
+            const hit = intersects[0];
+            console.log("🔥 Impacto en:", hit.object.name);
+        }
+    }
+
+
+    function handleKeyboardMovement(delta) {
+    if (!renderer.xr.isPresenting) {
+        const speed = keys['ShiftLeft'] || keys['ShiftRight'] 
+            ? CONFIG.PLAYER_SPRINT_SPEED 
+            : CONFIG.PLAYER_SPEED;
+
+        const dir = new THREE.Vector3();
+
+        if (keys['KeyW']) dir.z = -1;
+        if (keys['KeyS']) dir.z = 1;
+        if (keys['KeyA']) dir.x = -1;
+        if (keys['KeyD']) dir.x = 1;
+
+        dir.normalize();
+
+        const move = new THREE.Vector3();
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, upVector).normalize();
+
+        move.addScaledVector(forward, dir.z * speed * delta);
+        move.addScaledVector(right, dir.x * speed * delta);
+
+        controls.getObject().position.add(move);
     }
 }
+
 
 
 
@@ -1033,82 +1058,59 @@
         // -------------------------------------------------------------------
 
         function animate() {
-            requestAnimationFrame(animate);
-            const dt = clock.getDelta(); // Obtener el tiempo desde el último frame
+    renderer.setAnimationLoop(() => {
+        const delta = clock.getDelta();
 
-            // 1. Actualizar Lógica (Física, IA, Animaciones)
-            if (playerLife > 0) { // Solo actualizar si el jugador está vivo
-                updatePlayerMovement(dt);
-                stepPhysics(dt);
-            }
-            if (mixer) mixer.update(dt); // Actualizar animaciones
-            updateHUD(); // actualizar HUD 3D
+        // --- VR MOVEMENT ---
+        if (renderer.xr.isPresenting) {
+            vrMove.set(0, 0, 0);
+            vrRotation = 0;
 
-            renderer.render(scene, camera);
+            // Movimiento con stick izquierdo (controller1 usually)
+            if (controller1.inputSource && controller1.inputSource.gamepad) {
+                const gp = controller1.inputSource.gamepad;
+                const x = gp.axes[2] || 0; // lateral
+                const y = gp.axes[3] || 0; // adelante/atrás
 
-            // 2. Sincronizar modelo 3D con la cámara FPS
-            if (playerModel) {
-                playerModel.position.copy(camera.position);
-                playerModel.quaternion.copy(camera.quaternion);
-                // Ajuste visual para alinear el modelo 3D con la cámara
-                playerModel.position.y -= CONFIG.PLAYER_HEIGHT / 2 - 2; 
-            }
+                // mover en dirección de la cámara
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                dir.y = 0;
+                dir.normalize();
 
-            // 3. Sincronizar la cámara de tercera persona (de la esquina) solo si NO es VR
-            if (!renderer.xr.isPresenting && playerModel && thirdPersonCamera) {
-                const offset = new THREE.Vector3(0, 40, 60); // Distancia detrás y arriba
-                offset.applyQuaternion(playerModel.quaternion); // Rotar el offset con el jugador
-                thirdPersonCamera.position.copy(playerModel.position).add(offset);
-                thirdPersonCamera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 20, 0))); // Mirar al pecho
+                const right = new THREE.Vector3();
+                right.crossVectors(dir, upVector).normalize();
+
+                vrMove.addScaledVector(dir, -y * CONFIG.PLAYER_SPEED * delta);
+                vrMove.addScaledVector(right, x * CONFIG.PLAYER_SPEED * delta);
             }
 
-            // 4. Renderizado
-            renderer.autoClear = false; // Desactivar limpieza automática
-            renderer.clear();
-
-            // --- Calcular el "Head Bob" solo para no VR ---
-            let bobOffset = 0;
-            if (!renderer.xr.isPresenting && playerRootBone && playerModel && playerLife > 0) {
-                const currentRootY = playerRootBone.position.y;
-                bobOffset = (currentRootY - defaultRootY) * playerModel.scale.y;
+            // Rotación suave con stick derecho (controller2)
+            if (controller2.inputSource && controller2.inputSource.gamepad) {
+                const gp = controller2.inputSource.gamepad;
+                const rx = gp.axes[2] || 0; // rotación horizontal
+                vrRotation = rx * 1.8 * delta; // sensibilidad
             }
 
-            // --- RENDER PRINCIPAL ---
-            if (!renderer.xr.isPresenting) {
-                // FPS normal
-                if (playerModel) playerModel.visible = false; // Invisible en 1ra persona
+            // Aplicar movimiento
+            controls.getObject().position.add(vrMove);
 
-                renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-                renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
-                renderer.setScissorTest(true);
-
-                camera.position.y += bobOffset;
-                renderer.render(scene, camera);
-                camera.position.y -= bobOffset;
-            } else {
-                // VR: renderiza automáticamente ambos ojos
-                renderer.render(scene, camera);
-            }
-
-            // --- RENDER 2: Vista de esquina (solo no VR) ---
-            if (!renderer.xr.isPresenting && playerModel && thirdPersonCamera) {
-                playerModel.visible = true; // Visible en 3ra persona
-                const w = window.innerWidth * 0.20;
-                const h = window.innerHeight * 0.20;
-                const x = window.innerWidth - w - 20;
-                const y = 20;
-
-                renderer.clearDepth(); // Limpiar solo la profundidad
-                renderer.setViewport(x, y, w, h);
-                renderer.setScissor(x, y, w, h);
-                renderer.setScissorTest(true);
-
-                renderer.render(scene, thirdPersonCamera);
-            }
-
-            renderer.autoClear = true; // Reactivar limpieza
-            stats.update(); // Actualizar medidor de FPS
+            // Aplicar rotación
+            controls.getObject().rotation.y -= vrRotation;
         }
+
+        // --- Movimiento con teclado (modo no-VR) ---
+        handleKeyboardMovement(delta);
+
+        // Actualizar física y animaciones
+        updatePlayerPhysics(delta);
+        updateHUD();
+        if (mixer) mixer.update(delta);
+
+        renderer.render(scene, camera);
+        stats.update();
+    });
+}
 
         // ---------------------------------------------------
         // Configuración para VR
