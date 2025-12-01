@@ -288,8 +288,7 @@
 
             // Juego
             SHOOT_DAMAGE: 30,             // Daño del disparo del jugador
-            SHOOT_RANGE: 1500,            // Alcance del disparo
-            
+            SHOOT_RANGE: 50,            // Alcance del disparo
             // Archivos (Rutas a los assets)
             HDR_PATH: 'models/rgbe/fondo.hdr',
             FLOOR_TEX: 'models/rgbe/piso.jpg',
@@ -320,8 +319,8 @@
         const playerCollider = new THREE.Box3();  // "Hitbox" (caja de colisión) del jugador
 
         // Utilitarios
-        const raycaster = new THREE.Raycaster();  // Para disparos y línea de visión de IA
         const upVector = new THREE.Vector3(0, 1, 0); // Vector "arriba"
+        const raycaster = new THREE.Raycaster();
 
         // Variables para el modelo 3D del jugador y su animación
         let playerRootBone;                 // Hueso de la cadera (para head-bob)
@@ -331,6 +330,8 @@
         let actionCurrent = null;           // Animación que se está reproduciendo ahora
         let wallMaterial;                   // Material global para los muros (eficiencia)
 
+
+        let controllerRight;
         // Iniciar el juego
         init();
         animate();
@@ -353,18 +354,39 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true; // Activar sombras
-            // --- ACTIVAR VR ---
-            renderer.xr.enabled = true;
-            document.body.appendChild(VRButton.createButton(renderer));
-            document.body.appendChild(renderer.domElement); // Añadir <canvas> al HTML
+           // --- ACTIVAR VR ---
+        renderer.xr.enabled = true;
+        document.body.appendChild(VRButton.createButton(renderer));
+        document.body.appendChild(renderer.domElement);
 
-            controller1 = renderer.xr.getController(0);
-            controller1.addEventListener('selectstart', handleShoot); // tu función de disparo
-            scene.add(controller1);
+        // === CONTROLES VR (META QUEST 3) ===
 
-            controller2 = renderer.xr.getController(1);
-            controller2.addEventListener('selectstart', handleShoot);
-            scene.add(controller2);
+        // Creamos ambos controllers (Quest los asigna automáticamente)
+        controller1 = renderer.xr.getController(0);
+        controller2 = renderer.xr.getController(1);
+
+        // Identificar cuál es la mano derecha y activar el gatillo
+        controller1.addEventListener('connected', (event) => {
+            if (event.data.handedness === 'right') {
+                controllerRight = controller1;
+                controllerRight.addEventListener('selectstart', handleShoot);
+                console.log("Control derecho conectado en controller1");
+            }
+        });
+
+        controller2.addEventListener('connected', (event) => {
+            if (event.data.handedness === 'right') {
+                controllerRight = controller2;
+                controllerRight.addEventListener('selectstart', handleShoot);
+                console.log("Control derecho conectado en controller2");
+            }
+        });
+
+        // Añadimos ambos a la escena (aunque solo usamos uno)
+        scene.add(controller1);
+        scene.add(controller2);
+
+
 
             // Medidor de FPS
             stats = new Stats();
@@ -702,71 +724,23 @@
         // ---------- 5. LÓGICA DE DISPARO ----------
         // -------------------------------------------------------------------
         function handleShoot() {
-                if (!controls.isLocked) return;
+    if (!controls.isLocked) return;
 
-                // SONIDO DE DISPARO
-                if (shootSound) {
-                    shootSound.currentTime = 0;
-                    shootSound.play();
-                }
+    const origin = camera.position.clone();
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
 
-                // 1. Crear el rayo láser
-                const origin = camera.position;
-                const dir = new THREE.Vector3();
-                camera.getWorldDirection(dir);
-                raycaster.set(origin, dir);
-                raycaster.far = CONFIG.SHOOT_RANGE;
+    raycaster.set(origin, dir);
+    raycaster.far = CONFIG.SHOOT_RANGE;
 
-                // 2. Checar colisiones
-                const shootableObjects = physicsObjects.map(p => p.mesh);
-                const hits = raycaster.intersectObjects(shootableObjects, true);
+    const intersects = raycaster.intersectObjects(scene.children, true);
 
-                let hitEnemy = false;
+    if (intersects.length > 0) {
+        const hit = intersects[0];
+        console.log("🔥 Impacto en:", hit.object.name);
+    }
+}
 
-                if (hits.length > 0) {
-                    const hit = hits[0];
-
-                    // Buscar si golpeó enemigo
-                    let target = hit.object;
-                    while (target && !enemies.includes(target)) target = target.parent;
-
-                    if (target && target.userData && target.userData.alive) {
-                        hitEnemy = true;
-                        applyDamageToEnemy(target, CONFIG.SHOOT_DAMAGE);
-
-                        // Impacto amarillo
-                        const p = new THREE.Mesh(
-                            new THREE.SphereGeometry(4, 8, 8),
-                            new THREE.MeshBasicMaterial({ color: 0xffff66 })
-                        );
-                        p.position.copy(hit.point);
-                        scene.add(p);
-                        setTimeout(() => scene.remove(p), 120);
-
-                    } else {
-                        // Impacto en pared
-                        const p = new THREE.Mesh(
-                            new THREE.SphereGeometry(2.5, 8, 8),
-                            new THREE.MeshBasicMaterial({ color: 0xffcc88 })
-                        );
-                        p.position.copy(hit.point);
-                        scene.add(p);
-                        setTimeout(() => scene.remove(p), 120);
-                    }
-                }
-
-                // Si no golpea nada → efecto gris
-                if (!hitEnemy && hits.length === 0) {
-                    const missPoint = origin.clone().add(dir.multiplyScalar(CONFIG.SHOOT_RANGE));
-                    const p = new THREE.Mesh(
-                        new THREE.SphereGeometry(2.5, 8, 8),
-                        new THREE.MeshBasicMaterial({ color: 0x666666 })
-                    );
-                    p.position.copy(missPoint);
-                    scene.add(p);
-                    setTimeout(() => scene.remove(p), 120);
-                }
-            }
 
 
         // -------------------------------------------------------------------
