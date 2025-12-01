@@ -1,95 +1,116 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Alienrinto</title>
+    <title>Alienrinto VR</title>
     <link rel="icon" type="image/png" href="assets/icono.png">
     
     <style>
         /* -------- PORTADA INICIAL -------- */
-            #portada {
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0.85);
-                background-size: cover;
-                background-blend-mode: overlay;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 999;
-                text-align: center;
-                padding: 20px;
-            }
+        #portada {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            background-size: cover;
+            background-blend-mode: overlay;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            text-align: center;
+            padding: 20px;
+        }
 
-            #portada-content {
-                max-width: 700px;
-                background: rgba(0,0,0,0.6);
-                padding: 40px;
-                border-radius: 14px;
-                box-shadow: 0 0 20px rgba(0,255,150,0.4);
-                border: 1px solid #22ff88;
-            }
+        #portada-content {
+            max-width: 700px;
+            background: rgba(0,0,0,0.6);
+            padding: 40px;
+            border-radius: 14px;
+            box-shadow: 0 0 20px rgba(0,255,150,0.4);
+            border: 1px solid #22ff88;
+        }
 
-            #portada h1 {
-                font-size: 48px;
-                color: #22ff88;
-                margin-bottom: 10px;
-            }
+        #portada h1 {
+            font-size: 48px;
+            color: #22ff88;
+            margin-bottom: 10px;
+        }
 
-            #portada .sub {
-                font-size: 18px;
-                margin-bottom: 18px;
-                color: #ccc;
-            }
+        #portada .sub {
+            font-size: 18px;
+            margin-bottom: 18px;
+            color: #ccc;
+        }
 
-            #portada h2 {
-                margin-top: 20px;
-                color: #22ff88;
-            }
+        #portada h2 {
+            margin-top: 20px;
+            color: #22ff88;
+        }
 
-            #portada ul {
-                list-style: none;
-                padding: 0;
-            }
+        #portada ul {
+            list-style: none;
+            padding: 0;
+        }
 
-            #portada ul li {
-                margin: 6px 0;
-            }
+        #portada ul li {
+            margin: 6px 0;
+        }
 
-            #portada .equipo {
-                color: #ddd;
-                line-height: 1.6;
-            }
+        #portada .equipo {
+            color: #ddd;
+            line-height: 1.6;
+        }
 
-            #startBtn {
-                margin-top: 28px;
-                padding: 12px 32px;
-                font-size: 18px;
-                border: none;
-                background: #22ff88;
-                color: #000;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: 0.2s ease;
-                font-weight: bold;
-            }
+        #startBtn {
+            margin-top: 28px;
+            padding: 12px 32px;
+            font-size: 18px;
+            border: none;
+            background: #22ff88;
+            color: #000;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s ease;
+            font-weight: bold;
+        }
 
-            #startBtn:hover {
-                background: #44ffaa;
-            }
+        #startBtn:hover {
+            background: #44ffaa;
+        }
 
-        /* Estilos generales del cuerpo: tipografía Arial, fondo negro, sin márgenes */
-        body { margin:0; background:#000; color:#fff; font-family: Arial, sans-serif; overflow:hidden; }
+        /* Estilos generales */
+        body { 
+            margin:0; 
+            background:#000; 
+            color:#fff; 
+            font-family: Arial, sans-serif; 
+            overflow:hidden; 
+        }
         
-        /* Contenedor de información simple (esquina superior izquierda) */
-        #info { position:absolute; top:8px; left:8px; z-index:10; background:rgba(0,0,0,0.4); padding:8px; border-radius:6px; font-size: 14px; }
+        #info { 
+            position:absolute; 
+            top:8px; 
+            left:8px; 
+            z-index:10; 
+            background:rgba(0,0,0,0.4); 
+            padding:8px; 
+            border-radius:6px; 
+            font-size: 14px; 
+        }
         
-        /* HUD (Head-Up Display): Vida y Enemigos (esquina superior derecha) */
-        #hud { position: absolute; right: 12px; top: 12px; z-index:10; background: rgba(0,0,0,0.5); padding:10px; border-radius:6px; text-align:right; min-width:140px; }
+        #hud { 
+            position: absolute; 
+            right: 12px; 
+            top: 12px; 
+            z-index:10; 
+            background: rgba(0,0,0,0.5); 
+            padding:10px; 
+            border-radius:6px; 
+            text-align:right; 
+            min-width:140px; 
+        }
         
-        /* Mensajes centrales (¡GANASTE! / GAME OVER) */
         #message { 
             position: absolute; 
             left:50%; 
@@ -102,60 +123,39 @@
             padding:12px 20px; 
             border-radius:8px; 
             display:none; 
-            white-space: pre-wrap; /* <-- ¡IMPORTANTE! Permite saltos de línea con \n */
+            white-space: pre-wrap;
             text-align: center;
-        }
-        
-        /* Mira del jugador (cruz en el centro) */
-        .crosshair { position: absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; z-index:9; pointer-events:none; opacity:0.85; }
-        .crosshair:before, .crosshair:after { content:""; position:absolute; background:#fff; }
-        .crosshair:before { left:50%; top:0; width:2px; height:100%; transform:translateX(-50%); }
-        .crosshair:after  { top:50%; left:0; height:2px; width:100%; transform:translateY(-50%); }
-        
-        /* Pie de página (Footer) para créditos y controles */
-        footer { 
-            position:fixed; 
-            left:0; 
-            right:0; 
-            bottom:0; 
-            background:rgba(0,0,0,0.6); 
-            color:#fff; 
-            padding:10px 16px; 
-            display:flex; 
-            justify-content:space-between; 
-            align-items:center; 
-            z-index:5; 
-            font-family: Arial, sans-serif; /* Requisito: Arial */
-        }
-        
-        /* Estilo para el <h1> del Título */
-        footer h1 {
-            margin: 0 0 5px 0;
-            font-size: 20px;
-            font-weight: bold;      /* Requisito: Negrita */
-            color: #22ff88;         /* Requisito: Color acorde (verde del portal) */
-        }
-
-        /* Estilo para el "Tablero de Teclas" */
-        #key-board {
-            font-size: 12px;
-            line-height: 1.5;
-        }
-        #key-board strong {
-            color: #22ff88;
-            min-width: 60px;
-            display: inline-block;
-        }
-
-        /* Estilo para la info del Equipo */
-        #team-info {
-            text-align: right;
-            font-size: 13px;
-            line-height: 1.5;
         }
         
         canvas { display:block; }
         #stats-container { position: absolute; top: 0; left: 0; z-index: 100; }
+        
+        /* Estilos para VR */
+        #vr-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #22ff88;
+            z-index: 100;
+        }
+        
+        #vr-info h3 {
+            margin-top: 0;
+            color: #22ff88;
+        }
+        
+        #vr-info ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        
+        #vr-info li {
+            margin: 5px 0;
+        }
         
     </style>
 
@@ -170,1016 +170,697 @@
 </head>
 
 <body>
+    <!-- Audio -->
     <audio id="shootSound" src="assets/Disparo.mp3"></audio>
     <audio id="enemyDeathSound" src="assets/Explosion.mp3"></audio>
-    <audio id="backgroundMusic" autoplay loop="">
+    <audio id="backgroundMusic" loop>
         <source src="assets/musica.mp3" type="audio/mpeg">
-    </audio>
+    </audio>
 
-<!-- PORTADA INICIAL -->
-<div id="portada">
-    <div id="portada-content">
-        <h1>Alienrinto</h1>
+    <!-- PORTADA INICIAL -->
+    <div id="portada">
+        <div id="portada-content">
+            <h1>Alienrinto VR</h1>
+            <p class="sub">Laberinto Alienígena – Experiencia VR para Meta Quest 3</p>
 
-        <p class="sub">Laberinto Alienígena – Juego 3D en VR</p>
+            <h2>Instrucciones VR</h2>
+            <ul>
+                <li><strong>Joystick izquierdo</strong> - Movimiento</li>
+                <li><strong>Gatillo derecho</strong> - Disparar</li>
+                <li><strong>Botón A/X</strong> - Saltar</li>
+                <li><strong>Botón de menú</strong> - Pausa/Salir VR</li>
+                <li>Llega al portal sin que los aliens te maten</li>
+            </ul>
 
-        <h2>Instrucciones</h2>
-        <ul>
-            <li>Usa <strong>W A S D</strong> para moverte</li>
-            <li>Presiona <strong>F</strong> para disparar</li>
-            <li>Llega al portal sin que los aliens te maten</li>
-        </ul>
+            <h2>Integrantes del Equipo</h2>
+            <p class="equipo">
+                23200860 – Márquez Zempoalteca Judith<br>
+                23200823 – Cruz Monter Sergio Eloy<br>
+                23200904 – Veloz Pérez Mariana
+            </p>
 
-        <h2>Integrantes del Equipo</h2>
-        <p class="equipo">
-            23200860 – Márquez Zempoalteca Judith<br>
-            23200823 – Cruz Monter Sergio Eloy<br>
-            23200904 – Veloz Pérez Mariana
-        </p>
-
-        <button id="startBtn">Iniciar Juego</button>
+            <button id="startBtn">Iniciar Experiencia VR</button>
+        </div>
     </div>
-</div>
 
-
+    <!-- HUD -->
     <div id="hud">
         <div><strong>Vida:</strong> <span id="life">100</span></div>
         <div><strong>Enemigos:</strong> <span id="enemiesCount">0</span></div>
-        <div style="font-size:12px; margin-top:6px;">Objetivo: llegar al final del laberinto</div>
+        <div style="font-size:12px; margin-top:6px;">Objetivo: llegar al portal verde</div>
     </div>
 
     <div id="message"></div>
 
-    <div class="crosshair"></div>
-
-   <!--<footer>
-        <div>
-            <h1>Alienrinto: Laberinto Alienígena</h1>
-            
-            <div id="key-board">
-                <strong>W</strong> - Adelante<br>
-                <strong>A</strong> - Izquierda<br>
-                <strong>S</strong> - Derecha<br>
-                <strong>D</strong> - Atrás
-            </div>
-        </div>
-        <div>
-            <div id="key-board" style="text-align: right; margin-bottom: 10px;">
-                <strong>F</strong> - Disparar<br>
-                <strong>1-5</strong> - Cambiar Animación<br>
-                <strong>Click</strong> - Bloquear Cursor
-            </div>
-        </div>
-        <div>
-            <div id="team-info">
-                <strong>Equipo:</strong><br>
-                23200860 - Marquez Zempoalteca Judith<br>
-                23200823 - Cruz Monter Sergio Eloy<br>
-                23200904 - Veloz Pérez Mariana
-            </div>
-        </div>
-    </footer>--> 
+    <!-- Información VR -->
+    <div id="vr-info" style="display: none;">
+        <h3>Controles Quest 3</h3>
+        <ul>
+            <li><strong>Joystick:</strong> Moverse</li>
+            <li><strong>Gatillo derecho:</strong> Disparar</li>
+            <li><strong>Botón A/X:</strong> Saltar</li>
+        </ul>
+    </div>
 
     <div id="stats-container"></div>
 
     <script type="module">
-        // ---------- Importaciones de Módulos de Three.js ----------
-        import * as THREE from 'three'; // El núcleo de Three.js
-        import Stats from 'three/addons/libs/stats.module.js'; // Medidor de FPS (Stats.js)
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js'; // Controles FPS
-        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'; // Cargador para texturas HDR (cielo)
-        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'; // Cargador para modelos 3D (personaje)
-        //import { SkeletonUtils } from 'three/addons/utils/SkeletonUtils.js'; // <-- ¡AÑADE ESTA LÍNEA!
-        import { AnimationMixer } from 'three'; // Reproductor de animaciones
-        import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/webxr/VRButton.js';
-        window.VRButton = VRButton; // Hacerlo global para tu script
+        // ---------- Importaciones ----------
+        import * as THREE from 'three';
+        import Stats from 'three/addons/libs/stats.module.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
         // -------------------------------------------------------------------
-        // ---------- 🚀 CONFIGURACIÓN GLOBAL DEL JUEGO ----------
-        // Centraliza todas las variables "mágicas" para fácil ajuste.
+        // ---------- CONFIGURACIÓN ----------
         // -------------------------------------------------------------------
         const CONFIG = {
-            // Física y Jugador
-            GRAVITY: -30,                 // Fuerza de gravedad
-            PLAYER_SPEED: 120,            // Velocidad al caminar
-            PLAYER_SPRINT_SPEED: 220,     // Velocidad al correr (Shift)
-            PLAYER_JUMP_FORCE: 10,        // Fuerza del salto
-            PLAYER_HEIGHT: 18,            // Altura del "hitbox" de colisión
-            PLAYER_WIDTH: 8,              // Ancho del "hitbox" de colisión
-            PLAYER_DAMPING: 0.9,          // Fricción (0 = sin fricción, 1 = se detiene ya)
-            PLAYER_START_LIFE: 100,       // Vida inicial
-
+            // Jugador VR
+            GRAVITY: -30,
+            PLAYER_SPEED: 80,
+            PLAYER_JUMP_FORCE: 12,
+            PLAYER_HEIGHT: 18,
+            PLAYER_WIDTH: 8,
+            PLAYER_DAMPING: 0.9,
+            PLAYER_START_LIFE: 100,
+            
             // Laberinto
-            MAZE_COLS: 11,                // Columnas del laberinto (debe ser impar)
-            MAZE_ROWS: 11,                // Filas del laberinto (debe ser impar)
-            CELL_SIZE: 80,                // Tamaño (ancho/largo) de cada celda
-            WALL_HEIGHT: 36,              // Altura de los muros
-            WALL_THICKNESS: 8,            // Grosor de los muros
-
-            // IA y Enemigos
-            ENEMY_COUNT: 8,               // Cuántos enemigos crear
-            ENEMY_HEALTH: 50,             // Vida de cada enemigo
-            ENEMY_SPEED_MIN: 0.8,         // Velocidad mínima del enemigo
-            ENEMY_SPEED_MAX: 1.6,         // Velocidad máxima del enemigo
-            ENEMY_SIGHT_RANGE: 400,       // Rango de visión del enemigo
-            ENEMY_ATTACK_RANGE: 15,       // Rango de ataque del enemigo
-            ENEMY_ATTACK_DAMAGE: 8,       // Daño por ataque
-            ENEMY_ATTACK_COOLDOWN: 1000,  // Tiempo (ms) entre ataques
-
-            // Juego
-            SHOOT_DAMAGE: 30,             // Daño del disparo del jugador
-            SHOOT_RANGE: 50,            // Alcance del disparo
-            // Archivos (Rutas a los assets)
+            MAZE_COLS: 11,
+            MAZE_ROWS: 11,
+            CELL_SIZE: 80,
+            WALL_HEIGHT: 36,
+            WALL_THICKNESS: 8,
+            
+            // Enemigos
+            ENEMY_COUNT: 8,
+            ENEMY_HEALTH: 50,
+            ENEMY_SPEED_MIN: 0.8,
+            ENEMY_SPEED_MAX: 1.6,
+            ENEMY_SIGHT_RANGE: 400,
+            ENEMY_ATTACK_RANGE: 15,
+            ENEMY_ATTACK_DAMAGE: 8,
+            ENEMY_ATTACK_COOLDOWN: 1000,
+            
+            // Disparo
+            SHOOT_DAMAGE: 30,
+            SHOOT_RANGE: 50,
+            
+            // Archivos
             HDR_PATH: 'models/rgbe/fondo.hdr',
             FLOOR_TEX: 'models/rgbe/piso.jpg',
-            WALL_TEX: 'models/rgbe/paredes.jpg', // Textura para los muros
+            WALL_TEX: 'models/rgbe/paredes.jpg',
         };
 
         // -------------------------------------------------------------------
-        // ---------- Variables Globales del Programa ----------
+        // ---------- Variables Globales ----------
         // -------------------------------------------------------------------
-        let camera, scene, renderer, stats, controls, clock; // Núcleo de Three.js
-        let controller1, controller2;
-        let hudCtx, hudCanvas, hudTexture;
-
-        const keys = {};                 // Objeto para guardar qué teclas están presionadas
-        const physicsObjects = [];       // Array de objetos con colisión (paredes, enemigos)
-        const enemies = [];              // Array para guardar solo los enemigos
-        let playerLife = CONFIG.PLAYER_START_LIFE; // Vida actual del jugador
-
-        // Elementos del DOM (HTML) para el HUD
+        let camera, scene, renderer, stats, clock;
+        let controller1, controller2, controllerGrip1, controllerGrip2;
+        let playerLife = CONFIG.PLAYER_START_LIFE;
+        
+        const physicsObjects = [];
+        const enemies = [];
+        const playerVelocity = new THREE.Vector3();
+        let playerOnGround = false;
+        const playerCollider = new THREE.Box3();
+        
+        // Elementos DOM
         const lifeEl = document.getElementById('life');
         const enemiesCountEl = document.getElementById('enemiesCount');
         const messageEl = document.getElementById('message');
+        const vrInfoEl = document.getElementById('vr-info');
         const statsContainer = document.getElementById('stats-container');
-
-        // Estado de la física del jugador
-        const playerVelocity = new THREE.Vector3(); // Vector de velocidad actual
-        let playerOnGround = false;               // ¿El jugador está en el suelo?
-        const playerCollider = new THREE.Box3();  // "Hitbox" (caja de colisión) del jugador
-
-        // Utilitarios
-        const upVector = new THREE.Vector3(0, 1, 0); // Vector "arriba"
+        
+        // Variables para modelos
+        let playerModel, mixer;
+        let wallMaterial;
         const raycaster = new THREE.Raycaster();
 
-        // Variables para el modelo 3D del jugador y su animación
-        let playerRootBone;                 // Hueso de la cadera (para head-bob)
-        let defaultRootY = 0;               // Posición Y inicial del hueso
-        let playerModel, mixer, thirdPersonCamera; // El modelo, su "reproductor" y la cámara 3ra persona
-        const actions = {};                 // Objeto para guardar todas las animaciones (ej. 'Running')
-        let actionCurrent = null;           // Animación que se está reproduciendo ahora
-        let wallMaterial;                   // Material global para los muros (eficiencia)
-
-
-        let controllerRight;
-
-        let vrMove = new THREE.Vector3();
-        let vrRotation = 0;
-
-        // Iniciar el juego
-        init();
-        animate();
-
         // -------------------------------------------------------------------
-        // ---------- 1. INICIALIZACIÓN (init) ----------
-        // Se ejecuta una sola vez. Configura la escena, carga modelos y crea el laberinto.
+        // ---------- Funciones Principales ----------
         // -------------------------------------------------------------------
+        
         function init() {
-            // Configuración básica de la escena
-            clock = new THREE.Clock();          // Reloj para medir el tiempo (delta time)
-            scene = new THREE.Scene();          // La escena principal
-            scene.fog = new THREE.Fog(0xcccccc, 400, 1300); // Niebla
-
-            // Cámara principal (FPS)
-            // FOV 60, Aspect Ratio, Near Plane 1 (evita "pared blanca"), Far Plane 3000
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 3000);
+            clock = new THREE.Clock();
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0xcccccc, 400, 1300);
             
-            // Renderizador (dibuja la escena en el <canvas>)
+            // Cámara
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
+            
+            // Renderizador con XR
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true; // Activar sombras
-           // --- ACTIVAR VR ---
-        renderer.xr.enabled = true;
-        document.body.appendChild(VRButton.createButton(renderer));
-        document.body.appendChild(renderer.domElement);
-
-        // === CONTROLES VR (META QUEST 3) ===
-
-        // --- Controladores VR: disparo + movimiento ---
-        controller1 = renderer.xr.getController(0);
-        controller1.addEventListener('selectstart', handleShoot);
-        controller1.addEventListener('connected', (e) => { controller1.inputSource = e.data; });
-
-        controller2 = renderer.xr.getController(1);
-        controller2.addEventListener('selectstart', handleShoot);
-        controller2.addEventListener('connected', (e) => { controller2.inputSource = e.data; });
-
-        // Añadimos ambos a la escena (aunque solo usamos uno)
-        scene.add(controller1);
-        scene.add(controller2);
-
-
-
-            // Medidor de FPS
+            renderer.shadowMap.enabled = true;
+            renderer.xr.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            
+            // Botón VR
+            document.body.appendChild(VRButton.createButton(renderer));
+            
+            // Stats
             stats = new Stats();
             statsContainer.appendChild(stats.dom);
-
-            // Cámara de 3ra persona (para la esquina)
-            const aspect = (window.innerWidth * 0.25) / (window.innerHeight * 0.25);
-            thirdPersonCamera = new THREE.PerspectiveCamera(50, aspect, 1, 1000);
-            scene.add(thirdPersonCamera);
-
-            // Carga de Texturas y Materiales (se hace 1 vez para eficiencia)
+            
+            // Cargar texturas
             const texLoader = new THREE.TextureLoader();
             const wallMap = texLoader.load(CONFIG.WALL_TEX);
             wallMap.wrapS = wallMap.wrapT = THREE.RepeatWrapping;
             wallMap.repeat.set(1, 1);
-
+            
             wallMaterial = new THREE.MeshStandardMaterial({
                 map: wallMap,
                 roughness: 0.8,
                 metalness: 0.2
             });
-
-            // Carga del Modelo 3D del Jugador (FBX)
-            const fbx = new FBXLoader();
-            const animLoader = new FBXLoader(); // Cargador separado para las animaciones
-            const charPath = 'models/fbx/Jab Cross.fbx'; // Modelo base (contiene la malla)
             
-            // Lista de animaciones a cargar (nombre, ruta)
-            const animationFiles = [
-                ['Running',           'models/fbx/Running.fbx'],
-                ['Running Up Stairs', 'models/fbx/Running Up Stairs.fbx'],
-                ['Jump',              'models/fbx/Jump.fbx'],
-                ['Walking',           'models/fbx/Walking.fbx']
-            ];
-
-            // 1. Cargar el modelo principal
-            fbx.load(charPath, (fbxScene) => {
+            // Cargar modelo del jugador
+            const fbxLoader = new FBXLoader();
+            fbxLoader.load('models/fbx/Jab Cross.fbx', (fbxScene) => {
                 playerModel = fbxScene;
-                // Escalar el modelo para que coincida con nuestra altura de jugador
-                const modelHeight = 150; // Altura aprox. de un modelo Mixamo
+                const modelHeight = 150;
                 const targetScale = CONFIG.PLAYER_HEIGHT / modelHeight;
-                playerModel.scale.set(targetScale, targetScale, targetScale); 
+                playerModel.scale.set(targetScale, targetScale, targetScale);
                 
                 playerModel.traverse(c => {
                     if (c.isMesh) {
-                        c.castShadow = true;    // El jugador arroja sombra
-                        c.receiveShadow = false; // Pero no recibe sombra (se ve raro en FPS)
-                    }
-                });
-
-                // Encontrar el hueso "Hips" (cadera) para el efecto de bamboleo (head-bob)
-                playerModel.traverse(c => {
-                    if (c.isBone && (c.name.includes('Hips') || c.name.includes('hips') || c.name.includes('mixamorig:Hips'))) {
-                        playerRootBone = c;
-                        console.log("Hueso raíz encontrado:", c.name);
+                        c.castShadow = true;
+                        c.receiveShadow = false;
                     }
                 });
                 
-                if (playerRootBone) {
-                    defaultRootY = playerRootBone.position.y; // Guardar altura inicial del hueso
-                } else {
-                    console.warn("No se encontró el hueso 'Hips'. El 'head bob' no funcionará.");
-                    const boneNames = [];
-                    playerModel.traverse(c => { if (c.isBone) boneNames.push(c.name); });
-                    console.log("Huesos disponibles:", boneNames); // Log para depuración
-                }
-
-                // 2. Crear el "reproductor" (Mixer) para este modelo
-                mixer = new THREE.AnimationMixer(playerModel);
-
-                // 3. Cargar la animación que viene DENTRO del modelo principal
-                if (fbxScene.animations && fbxScene.animations.length > 0) {
-                    const mainClip = fbxScene.animations[0];
-                    actions['Jab Cross'] = mixer.clipAction(mainClip);
-                    console.log(`Animación base cargada: ${mainClip.name} (guardada como 'Jab Cross')`);
-                } else {
-                    console.warn("El modelo principal (Jab Cross.fbx) no contenía animaciones.");
-                }
-
-                // 4. Cargar todas las demás animaciones por separado
-                animationFiles.forEach(([name, path]) => {
-                    animLoader.load(path, (animFbx) => {
-                        if (animFbx.animations && animFbx.animations.length > 0) {
-                            const clip = animFbx.animations[0];
-                            // Añadir este clip al mixer del *jugador principal*
-                            actions[name] = mixer.clipAction(clip);
-                            console.log(`Animación cargada: '${name}' desde ${path}`);
-                        } else {
-                            console.warn(`El archivo de animación ${path} no contenía clips.`);
-                        }
-                    }, undefined, err => console.warn(`Error cargando animación ${path}:`, err));
-                });
-
-                // 5. Iniciar con la animación por defecto
-                if (actions['Jab Cross']) {
-                    playAction('Jab Cross');
-                } else if (fbxScene.animations.length > 0) {
-                    const defaultAnimName = fbxScene.animations[0].name;
-                    playAction(defaultAnimName);
-                } else {
-                    console.warn("No hay animación por defecto para reproducir.");
-                }
-                
-                // 6. Añadir el modelo (invisible por ahora) a la escena
                 scene.add(playerModel);
-
-            }, undefined, err => console.warn('No se cargó el modelo del jugador:', err));
-
-
-            // Controles FPS (PointerLock)
-            controls = new PointerLockControls(camera, renderer.domElement);
-            // Listener para bloquear el cursor al hacer clic
-            document.body.addEventListener('click', () => {
-                if (playerLife > 0) {
-                     controls.lock(); // Bloquear cursor
-                }
-            });
-           // controls.addEventListener('lock', () => showMessage('Controles desbloqueados', 1500));
-            //controls.addEventListener('unlock', () => showMessage('Controles bloqueados', 1500));
-            // Añadir el "objeto" de controles (la cámara) a la escena
-            scene.add(controls.getObject());
-
-            // ---------- HUD 3D VR (con vida, enemigos y objetivo) ----------
-            hudCanvas = document.createElement('canvas');
-            hudCanvas.width = 512;
-            hudCanvas.height = 256;
-
-            hudCtx = hudCanvas.getContext('2d');
-
-            hudTexture = new THREE.CanvasTexture(hudCanvas);
-            const hudMaterial = new THREE.MeshBasicMaterial({
-                map: hudTexture,
-                transparent: true
-            });
-
-            const hudPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(1.5, 0.75),
-                hudMaterial
-            );
-            hudPlane.position.set(0, 0, -2);
-
-            // Lo añadimos a la cámara (HUD fijo en VR)
-            camera.add(hudPlane);
-            scene.add(camera);
-
-
-            // Configuración de Luces
-            const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7); // Luz ambiental suave
-            scene.add(hemi);
-            const sun = new THREE.DirectionalLight(0xffffff, 1.0); // Sol (luz direccional)
-            sun.position.set(100, 300, 100);
-            sun.castShadow = true; // El sol arroja sombras
-            // Configuración de la calidad de las sombras
-            sun.shadow.mapSize.width = 1024;
-            sun.shadow.mapSize.height = 1024;
-            scene.add(sun);
-
+                
+                // Crear mixer para animaciones
+                mixer = new THREE.AnimationMixer(playerModel);
+                
+                // Cargar animaciones adicionales
+                const animLoader = new FBXLoader();
+                const animations = [
+                    ['Running', 'models/fbx/Running.fbx'],
+                    ['Jump', 'models/fbx/Jump.fbx'],
+                    ['Walking', 'models/fbx/Walking.fbx']
+                ];
+                
+                animations.forEach(([name, path]) => {
+                    animLoader.load(path, (animFbx) => {
+                        if (animFbx.animations.length > 0) {
+                            const clip = animFbx.animations[0];
+                            const action = mixer.clipAction(clip);
+                            action.name = name;
+                        }
+                    });
+                });
+                
+            }, undefined, err => console.warn('Error cargando modelo:', err));
+            
+            // Configurar controladores VR
+            setupVRControllers();
+            
+            // Luces
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
+            scene.add(hemiLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(100, 300, 100);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+            
             // Piso
             const floorMap = texLoader.load(CONFIG.FLOOR_TEX);
-            floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping; // Repetir textura
-            floorMap.repeat.set(12, 12); // 12x12 repeticiones
+            floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
+            floorMap.repeat.set(12, 12);
             const floorMat = new THREE.MeshStandardMaterial({ map: floorMap, roughness: 0.9 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), floorMat);
-            floor.rotation.x = -Math.PI / 2; // Rotar para que esté horizontal
-            floor.receiveShadow = true; // El piso recibe sombras
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
             scene.add(floor);
-
-            // Cielo (HDR)
+            
+            // Cielo HDR
             new RGBELoader().load(CONFIG.HDR_PATH, tex => {
                 tex.mapping = THREE.EquirectangularReflectionMapping;
-                scene.environment = tex; // Para reflejos
-                scene.background = tex;  // Como fondo
-            }, undefined, err => console.warn('HDR no cargado:', err));
-
-            // --- Creación del Nivel ---
+                scene.environment = tex;
+                scene.background = tex;
+            });
+            
+            // Generar nivel
             generateMaze(CONFIG.MAZE_ROWS, CONFIG.MAZE_COLS, CONFIG.CELL_SIZE);
             spawnEnemiesInMaze(CONFIG.ENEMY_COUNT);
             createGoalAtEnd();
             
-            // --- Posicionar al Jugador ---
-            // (Se hace DESPUÉS de generateMaze para que scene.userData.maze exista)
+            // Posicionar jugador
             const maze = scene.userData.maze;
             if (maze) {
                 camera.position.set(
-                    maze.startX + CONFIG.CELL_SIZE / 2, // Centro de la celda inicial (X)
-                    CONFIG.PLAYER_HEIGHT * 0.8,         // Altura de los ojos
-                    maze.startZ + CONFIG.CELL_SIZE / 2  // Centro de la celda inicial (Z)
+                    maze.startX + CONFIG.CELL_SIZE / 2,
+                    CONFIG.PLAYER_HEIGHT * 0.8,
+                    maze.startZ + CONFIG.CELL_SIZE / 2
                 );
-            } else {
-                console.error("Error: No se pudo generar el laberinto, el jugador no se posicionó.");
             }
-
-
-            // --- Event Listeners (Entradas de usuario) ---
-            window.addEventListener('resize', onWindowResize); // Redimensionar ventana
-            window.addEventListener('keydown', onKeyDown);     // Tecla presionada
-            window.addEventListener('keyup', onKeyUp);         // Tecla soltada
-            // Disparo solo con 'F'
-            window.addEventListener('keydown', (e) => { if (e.code === 'KeyF') handleShoot(); });
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'KeyF') handleShoot();
+                if (e.code === 'Space' && playerOnGround) {
+                    playerVelocity.y = CONFIG.PLAYER_JUMP_FORCE;
+                    playerOnGround = false;
+                }
+            });
+            
+            // Iniciar música
+            const bgMusic = document.getElementById('backgroundMusic');
+            bgMusic.volume = 0.3;
+            
+            // Botón de inicio
+            document.getElementById('startBtn').addEventListener('click', () => {
+                document.getElementById('portada').style.opacity = "0";
+                setTimeout(() => {
+                    document.getElementById('portada').style.display = "none";
+                    vrInfoEl.style.display = "block";
+                    bgMusic.play().catch(e => console.log("Audio necesita interacción del usuario"));
+                }, 500);
+            });
         }
-
-        // -------------------------------------------------------------------
-        // ---------- 2. GENERACIÓN DEL LABERINTO ----------
-        // -------------------------------------------------------------------
+        
+        function setupVRControllers() {
+            const controllerModelFactory = new XRControllerModelFactory();
+            
+            // Controlador 1 (izquierdo)
+            controller1 = renderer.xr.getController(0);
+            controller1.addEventListener('selectstart', onSelectStart);
+            controller1.addEventListener('selectend', onSelectEnd);
+            scene.add(controller1);
+            
+            controllerGrip1 = renderer.xr.getControllerGrip(0);
+            controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
+            scene.add(controllerGrip1);
+            
+            // Controlador 2 (derecho)
+            controller2 = renderer.xr.getController(1);
+            controller2.addEventListener('selectstart', () => handleShoot());
+            controller2.addEventListener('squeezestart', () => {
+                if (playerOnGround) {
+                    playerVelocity.y = CONFIG.PLAYER_JUMP_FORCE;
+                    playerOnGround = false;
+                }
+            });
+            scene.add(controller2);
+            
+            controllerGrip2 = renderer.xr.getControllerGrip(1);
+            controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
+            scene.add(controllerGrip2);
+            
+            // Rayo para el controlador derecho (indicador de disparo)
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, -1)
+            ]);
+            
+            const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffff00 }));
+            line.scale.z = 10;
+            controller2.add(line);
+        }
+        
+        function onSelectStart() {
+            // Para agarre o interacción con la mano izquierda
+        }
+        
+        function onSelectEnd() {
+            // Para soltar objetos con la mano izquierda
+        }
+        
+        function handleShoot() {
+            if (!renderer.xr.isPresenting) return;
+            
+            // Disparar desde el controlador derecho
+            const origin = controller2.position.clone();
+            const dir = new THREE.Vector3(0, 0, -1);
+            dir.applyQuaternion(controller2.quaternion);
+            
+            raycaster.set(origin, dir);
+            raycaster.far = CONFIG.SHOOT_RANGE;
+            
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                if (hit.object.userData && hit.object.userData.alive) {
+                    applyDamageToEnemy(hit.object, CONFIG.SHOOT_DAMAGE);
+                }
+                
+                // Efecto visual de disparo
+                const shootEffect = new THREE.PointLight(0xffff00, 2, 20);
+                shootEffect.position.copy(origin);
+                scene.add(shootEffect);
+                
+                setTimeout(() => scene.remove(shootEffect), 100);
+                
+                // Sonido
+                const shootSound = document.getElementById('shootSound');
+                if (shootSound) {
+                    shootSound.currentTime = 0;
+                    shootSound.play();
+                }
+            }
+        }
+        
+        function updateVRMovement() {
+            if (!renderer.xr.isPresenting || !controller1) return;
+            
+            const session = renderer.xr.getSession();
+            if (!session) return;
+            
+            // Obtener input del joystick
+            for (const inputSource of session.inputSources) {
+                if (inputSource.handedness === 'left') {
+                    const gamepad = inputSource.gamepad;
+                    if (gamepad) {
+                        // Joystick izquierdo para movimiento
+                        const xAxis = gamepad.axes[2] || 0;
+                        const yAxis = gamepad.axes[3] || 0;
+                        
+                        if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
+                            // Dirección basada en la cámara
+                            const forward = new THREE.Vector3();
+                            const right = new THREE.Vector3();
+                            
+                            camera.getWorldDirection(forward);
+                            forward.y = 0;
+                            forward.normalize();
+                            
+                            right.crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
+                            
+                            // Movimiento
+                            playerVelocity.x = -right.x * xAxis * CONFIG.PLAYER_SPEED;
+                            playerVelocity.z = -right.z * xAxis * CONFIG.PLAYER_SPEED;
+                            
+                            playerVelocity.x += forward.x * yAxis * CONFIG.PLAYER_SPEED;
+                            playerVelocity.z += forward.z * yAxis * CONFIG.PLAYER_SPEED;
+                        } else {
+                            // Frenar si no hay input
+                            playerVelocity.x *= CONFIG.PLAYER_DAMPING;
+                            playerVelocity.z *= CONFIG.PLAYER_DAMPING;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function updatePhysics(dt) {
+            // Gravedad
+            playerVelocity.y += CONFIG.GRAVITY * dt;
+            
+            // Colisiones
+            const delta = playerVelocity.clone().multiplyScalar(dt);
+            const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
+            
+            playerCollider.setFromCenterAndSize(
+                camera.position,
+                new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
+            );
+            
+            // Colisión eje Y
+            const futureYCollider = playerCollider.clone().translate(new THREE.Vector3(0, delta.y, 0));
+            playerOnGround = false;
+            
+            for (const obj of physicsObjects) {
+                if (futureYCollider.intersectsBox(obj.boundingBox)) {
+                    if (playerVelocity.y < 0) {
+                        playerOnGround = true;
+                        camera.position.y = obj.boundingBox.max.y + playerHalfHeight;
+                    }
+                    playerVelocity.y = 0;
+                    delta.y = 0;
+                    break;
+                }
+            }
+            
+            // Colisión eje X
+            const futureXCollider = playerCollider.clone().translate(new THREE.Vector3(delta.x, 0, 0));
+            for (const obj of physicsObjects) {
+                if (futureXCollider.intersectsBox(obj.boundingBox)) {
+                    playerVelocity.x = 0;
+                    delta.x = 0;
+                    break;
+                }
+            }
+            
+            // Colisión eje Z
+            const futureZCollider = playerCollider.clone().translate(new THREE.Vector3(0, 0, delta.z));
+            for (const obj of physicsObjects) {
+                if (futureZCollider.intersectsBox(obj.boundingBox)) {
+                    playerVelocity.z = 0;
+                    delta.z = 0;
+                    break;
+                }
+            }
+            
+            // Aplicar movimiento
+            camera.position.add(delta);
+            
+            // Limitar altura mínima
+            if (camera.position.y < playerHalfHeight) {
+                playerVelocity.y = 0;
+                camera.position.y = playerHalfHeight;
+                playerOnGround = true;
+            }
+            
+            // IA de enemigos
+            const playerPos = camera.position;
+            for (const enemy of enemies) {
+                if (!enemy.userData || !enemy.userData.alive) continue;
+                
+                const toPlayer = new THREE.Vector3().subVectors(playerPos, enemy.position);
+                const dist = toPlayer.length();
+                
+                if (dist < CONFIG.ENEMY_SIGHT_RANGE) {
+                    toPlayer.normalize();
+                    toPlayer.y = 0;
+                    enemy.position.addScaledVector(toPlayer, enemy.userData.speed * dt * 60);
+                    
+                    // Actualizar bounding box
+                    const enemyPhysObj = physicsObjects.find(p => p.mesh === enemy);
+                    if (enemyPhysObj) enemyPhysObj.boundingBox.setFromObject(enemy);
+                    
+                    // Atacar
+                    if (dist < CONFIG.ENEMY_ATTACK_RANGE) {
+                        if (!enemy.userData._lastAttack || (performance.now() - enemy.userData._lastAttack) > CONFIG.ENEMY_ATTACK_COOLDOWN) {
+                            enemy.userData._lastAttack = performance.now();
+                            playerLife -= CONFIG.ENEMY_ATTACK_DAMAGE;
+                            if (playerLife < 0) playerLife = 0;
+                            lifeEl.textContent = playerLife;
+                            if (playerLife <= 0) onPlayerDead();
+                        }
+                    }
+                }
+            }
+            
+            // Chequear victoria
+            const goal = scene.userData.goal;
+            if (goal && playerLife > 0) {
+                const distGoal = camera.position.distanceTo(goal.position);
+                if (distGoal < 50) {
+                    showMessage('¡GANASTE!\n<span style="font-size: 18px">Llegaste al portal</span>', 7000);
+                    playerLife = -1;
+                }
+            }
+        }
+        
+        function applyDamageToEnemy(enemy, amount) {
+            if (!enemy.userData) return;
+            enemy.userData.health -= amount;
+            
+            enemy.material.emissive = new THREE.Color(0xff0000);
+            setTimeout(() => { 
+                if (enemy.material) enemy.material.emissive = new THREE.Color(0x000000);
+            }, 120);
+            
+            if (enemy.userData.health <= 0 && enemy.userData.alive) {
+                enemy.userData.alive = false;
+                
+                const deathSound = document.getElementById('enemyDeathSound');
+                if (deathSound) {
+                    deathSound.currentTime = 0;
+                    deathSound.play();
+                }
+                
+                enemy.rotation.z = Math.PI / 2;
+                enemy.material.color.set(0x333333);
+                
+                const idx = physicsObjects.findIndex(p => p.mesh === enemy);
+                if (idx >= 0) physicsObjects.splice(idx, 1);
+                
+                setTimeout(() => { 
+                    scene.remove(enemy); 
+                    updateEnemiesHUD(); 
+                }, 1200);
+            }
+            
+            updateEnemiesHUD();
+        }
+        
         function generateMaze(rows, cols, cellSize) {
-            // (Implementación del algoritmo "Recursive Backtracker" para crear la grilla)
+            // Generación del laberinto (mismo código anterior)
             const grid = [];
             for(let r=0;r<rows;r++){ grid[r] = []; for(let c=0;c<cols;c++){ grid[r][c] = { r, c, visited:false, walls: [true,true,true,true] }; }}
             const stack = []; let current = grid[0][0]; current.visited = true;
             function neighbors(cell){ const n = []; const {r,c} = cell; if(r>0 && !grid[r-1][c].visited) n.push(grid[r-1][c]); if(c<cols-1 && !grid[r][c+1].visited) n.push(grid[r][c+1]); if(r<rows-1 && !grid[r+1][c].visited) n.push(grid[r+1][c]); if(c>0 && !grid[r][c-1].visited) n.push(grid[r][c-1]); return n; }
             while(true){ const n = neighbors(current); if(n.length>0){ const next = n[Math.floor(Math.random()*n.length)]; stack.push(current); const dr = next.r - current.r; const dc = next.c - current.c; if(dr === -1){ current.walls[0] = false; next.walls[2] = false; } if(dc === 1){ current.walls[1] = false; next.walls[3] = false; } if(dr === 1){ current.walls[2] = false; next.walls[0] = false; } if(dc === -1){ current.walls[3] = false; next.walls[1] = false; } current = next; current.visited = true; } else if(stack.length>0){ current = stack.pop(); } else break; }
-
-            // --- Construcción de Muros 3D ---
+            
             const startX = -(cols * cellSize) / 2;
             const startZ = -(rows * cellSize) / 2;
             const wallHeightHalf = CONFIG.WALL_HEIGHT / 2;
-
-            // Geometría ÚNICA para todos los muros (eficiente)
-            // Se hace más larga (cellSize + thickness) para que se traslapen en las esquinas y no haya huecos
+            
             const wallGeo = new THREE.BoxGeometry(
                 cellSize + CONFIG.WALL_THICKNESS, 
                 CONFIG.WALL_HEIGHT, 
                 CONFIG.WALL_THICKNESS
             );
-
-            // Función auxiliar para crear un muro
+            
             const createWall = (posX, posZ, rotY) => {
-                const wall = new THREE.Mesh(wallGeo, wallMaterial); // Usa el material global
+                const wall = new THREE.Mesh(wallGeo, wallMaterial);
                 wall.position.set(posX, wallHeightHalf, posZ);
                 wall.rotation.y = rotY;
                 wall.receiveShadow = true;
                 wall.castShadow = true;
                 scene.add(wall);
                 
-                // Crear y guardar el Bounding Box (caja de colisión) del muro
                 wall.updateMatrixWorld();
                 const wallBox = new THREE.Box3().setFromObject(wall);
                 physicsObjects.push({ mesh: wall, boundingBox: wallBox, static: true });
-            
-                // Ajustar repetición de textura para que no se estire
-                if (wall.material.map) {
-                    wall.material.map.repeat.set(1, CONFIG.WALL_HEIGHT / (CONFIG.WALL_THICKNESS * 2));
-                }
             };
-
-            // Iterar sobre la grilla y crear los muros 3D
+            
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     const cell = grid[r][c];
                     const cx = startX + c * cellSize + cellSize / 2;
                     const cz = startZ + r * cellSize + cellSize / 2;
-
-                    // Centrar los muros en los bordes de la celda
-                    if (cell.walls[0]) createWall(cx, cz - cellSize / 2, 0); // Norte
-                    if (cell.walls[1]) createWall(cx + cellSize / 2, cz, Math.PI / 2); // Este
-                    if (cell.walls[2]) createWall(cx, cz + cellSize / 2, 0); // Sur
-                    if (cell.walls[3]) createWall(cx - cellSize / 2, cz, Math.PI / 2); // Oeste
+                    
+                    if (cell.walls[0]) createWall(cx, cz - cellSize / 2, 0);
+                    if (cell.walls[1]) createWall(cx + cellSize / 2, cz, Math.PI / 2);
+                    if (cell.walls[2]) createWall(cx, cz + cellSize / 2, 0);
+                    if (cell.walls[3]) createWall(cx - cellSize / 2, cz, Math.PI / 2);
                 }
             }
-            // Guardar la data del laberinto para uso futuro (posicionar jugador)
+            
             scene.userData.maze = { grid, startX, startZ, rows, cols, cellSize };
         }
-
-        // -------------------------------------------------------------------
-        // ---------- 3. SPAWN DE ENEMIGOS ----------
-        // -------------------------------------------------------------------
+        
         function spawnEnemiesInMaze(count) {
             const maze = scene.userData.maze;
-            if (!maze) return; // Seguridad si el laberinto no existe
+            if (!maze) return;
+            
             const { startX, startZ, rows, cols, cellSize } = maze;
-
-            // Geometría y material para los enemigos (bloques rojos)
             const enemyGeo = new THREE.BoxGeometry(15, 15, 15);
             const enemyMat = new THREE.MeshStandardMaterial({ color: 0xdd4444, roughness: 0.8 });
-
+            
             let placed = 0;
             while (placed < count) {
-                // Elegir una celda aleatoria (r, c)
                 const r = 1 + Math.floor(Math.random() * (rows - 2));
                 const c = 1 + Math.floor(Math.random() * (cols - 2));
                 const x = startX + c * cellSize + cellSize / 2;
                 const z = startZ + r * cellSize + cellSize / 2;
-
-                // Evitar spawn cerca del inicio
+                
                 if (Math.hypot(x - (startX + cellSize / 2), z - (startZ + cellSize / 2)) < cellSize) continue;
-
-                // Crear el enemigo
-                const enemy = new THREE.Mesh(enemyGeo, enemyMat); 
-                enemy.position.set(x, 7.5, z); // Posicionar en el suelo
+                
+                const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+                enemy.position.set(x, 7.5, z);
                 enemy.castShadow = true;
                 enemy.receiveShadow = true;
                 
-                // Guardar datos útiles en el enemigo (vida, velocidad, etc.)
                 enemy.userData = { 
                     health: CONFIG.ENEMY_HEALTH, 
                     alive: true, 
                     speed: CONFIG.ENEMY_SPEED_MIN + Math.random() * (CONFIG.ENEMY_SPEED_MAX - CONFIG.ENEMY_SPEED_MIN) 
                 };
-                scene.add(enemy);
                 
-                // Crear y guardar su Bounding Box para colisiones
+                scene.add(enemy);
                 enemy.updateMatrixWorld();
                 const enemyBox = new THREE.Box3().setFromObject(enemy);
-
-                enemies.push(enemy); // Añadir a la lista de enemigos
-                physicsObjects.push({ mesh: enemy, boundingBox: enemyBox, mass: 50 }); // Añadir a la lista de colisiones
+                
+                enemies.push(enemy);
+                physicsObjects.push({ mesh: enemy, boundingBox: enemyBox, mass: 50 });
                 placed++;
             }
-            updateEnemiesHUD(); // Actualizar contador
-        }
-
-        // -------------------------------------------------------------------
-        // ---------- 4. CREAR PORTAL (META) ----------
-        // -------------------------------------------------------------------
-        function createGoalAtEnd(){
-            const maze = scene.userData.maze;
-            if(!maze) return;
-            const { startX, startZ, rows, cols, cellSize } = maze;
-            // Posicionar en la esquina opuesta (última celda)
-            const gx = startX + (cols-1)*cellSize + cellSize/2;
-            const gz = startZ + (rows-1)*cellSize + cellSize/2;
-
-            // Crear un toroide (dona) verde brillante
-            const portalGeo = new THREE.TorusGeometry(30, 6, 16, 100);
-            const portalMat = new THREE.MeshStandardMaterial({ color:0x22ff88, emissive:0x22ff88, emissiveIntensity:0.3 });
-            const portal = new THREE.Mesh(portalGeo, portalMat);
-            portal.rotation.x = Math.PI/2; // Rotar para que esté vertical
-            portal.position.set(gx, 45, gz);
-            scene.add(portal);
-            // Guardar su posición para la detección de "victoria"
-            scene.userData.goal = { mesh: portal, position: new THREE.Vector3(gx,0,gz) };
-        }
-
-        // -------------------------------------------------------------------
-        // ---------- 5. LÓGICA DE DISPARO ----------
-        // -------------------------------------------------------------------
-        function handleShoot() {
-        if (!controls.isLocked) return;
-
-        const origin = camera.position.clone();
-        const dir = new THREE.Vector3();
-        camera.getWorldDirection(dir);
-
-        raycaster.set(origin, dir);
-        raycaster.far = CONFIG.SHOOT_RANGE;
-
-        const intersects = raycaster.intersectObjects(scene.children, true);
-
-        if (intersects.length > 0) {
-            const hit = intersects[0];
-            console.log("🔥 Impacto en:", hit.object.name);
-        }
-    }
-
-
-    function handleKeyboardMovement(delta) {
-    if (!renderer.xr.isPresenting) {
-        const speed = keys['ShiftLeft'] || keys['ShiftRight'] 
-            ? CONFIG.PLAYER_SPRINT_SPEED 
-            : CONFIG.PLAYER_SPEED;
-
-        const dir = new THREE.Vector3();
-
-        if (keys['KeyW']) dir.z = -1;
-        if (keys['KeyS']) dir.z = 1;
-        if (keys['KeyA']) dir.x = -1;
-        if (keys['KeyD']) dir.x = 1;
-
-        dir.normalize();
-
-        const move = new THREE.Vector3();
-        const forward = new THREE.Vector3();
-        camera.getWorldDirection(forward);
-        forward.y = 0;
-        forward.normalize();
-
-        const right = new THREE.Vector3();
-        right.crossVectors(forward, upVector).normalize();
-
-        move.addScaledVector(forward, dir.z * speed * delta);
-        move.addScaledVector(right, dir.x * speed * delta);
-
-        controls.getObject().position.add(move);
-    }
-}
-
-
-
-
-        // -------------------------------------------------------------------
-        // ---------- 6. APLICAR DAÑO A ENEMIGO ----------
-        // -------------------------------------------------------------------
-        function applyDamageToEnemy(enemy, amount) {
-        if (!enemy.userData) return;
-        enemy.userData.health -= amount;
-
-        // Parpadeo rojo
-        enemy.material.emissive = new THREE.Color(0xff0000);
-        setTimeout(() => { 
-            if (enemy.material) enemy.material.emissive = new THREE.Color(0x000000);
-        }, 120);
-
-        // ¿Murió?
-        if (enemy.userData.health <= 0 && enemy.userData.alive) {
-            enemy.userData.alive = false;
-
-            //SONIDO DE MUERTE
-            if (enemyDeathSound) {
-                enemyDeathSound.currentTime = 0;
-                enemyDeathSound.play();
-            }
-
-            enemy.rotation.z = Math.PI / 2;
-            enemy.material.color.set(0x333333);
-
-            // Quitar de la física
-            const idx = physicsObjects.findIndex(p => p.mesh === enemy);
-            if (idx >= 0) physicsObjects.splice(idx, 1);
-
-            setTimeout(() => { 
-                scene.remove(enemy); 
-                updateEnemiesHUD(); 
-            }, 1200);
-        }
-
-        updateEnemiesHUD();
-    }
-
-        // -------------------------------------------------------------------
-        // ---------- 7. MANEJO DE ENTRADAS (Input) ----------
-        // -------------------------------------------------------------------
-
-        // (onMouseDown está comentado porque se eliminó el disparo con clic)
-        /*function onMouseDown(e) {
-            if (e.button === 0 && controls.isLocked) handleShoot();
-        }*/
-
-        function onKeyDown(e) { 
-            // 'keys' se usa para movimiento (polling), se mantiene presionado
-            keys[e.code] = true;
             
-            // 'switch' se usa para acciones de una sola vez (eventos)
-            switch (e.code) {
-                case 'Digit1': playAction('Jab Cross'); break;
-                case 'Digit2': playAction('Running'); break;
-                case 'Digit3': playAction('Running Up Stairs'); break;
-                case 'Digit4': playAction('Jump'); break;
-                case 'Digit5': playAction('Walking'); break;
-            }
+            updateEnemiesHUD();
         }
-        function onKeyUp(e) { 
-            // Marcar la tecla como "suelta"
-            keys[e.code] = false; 
-        }
-
-        // -------------------------------------------------------------------
-        // ---------- 8. FUNCIONES DEL HUD Y MENSAJES ----------
-        // -------------------------------------------------------------------
         
-        // Actualiza el contador de enemigos en el HUD
+        function createGoalAtEnd() {
+            const maze = scene.userData.maze;
+            if (!maze) return;
+            
+            const { startX, startZ, rows, cols, cellSize } = maze;
+            const gx = startX + (cols-1) * cellSize + cellSize / 2;
+            const gz = startZ + (rows-1) * cellSize + cellSize / 2;
+            
+            const portalGeo = new THREE.TorusGeometry(30, 6, 16, 100);
+            const portalMat = new THREE.MeshStandardMaterial({ 
+                color: 0x22ff88, 
+                emissive: 0x22ff88, 
+                emissiveIntensity: 0.8 
+            });
+            
+            const portal = new THREE.Mesh(portalGeo, portalMat);
+            portal.rotation.x = Math.PI / 2;
+            portal.position.set(gx, 45, gz);
+            portal.castShadow = true;
+            scene.add(portal);
+            
+            // Añadir luz al portal
+            const portalLight = new THREE.PointLight(0x22ff88, 1, 100);
+            portalLight.position.set(gx, 60, gz);
+            scene.add(portalLight);
+            
+            scene.userData.goal = { mesh: portal, position: new THREE.Vector3(gx, 0, gz) };
+        }
+        
         function updateEnemiesHUD() {
             const alive = enemies.filter(e => e.userData && e.userData.alive).length;
             enemiesCountEl.textContent = alive;
         }
-
-        // Muestra un mensaje en el centro de la pantalla
+        
         function showMessage(text, ms = 3000) {
             messageEl.style.display = 'block';
-            messageEl.innerHTML = text; // Usamos innerHTML para permitir saltos de línea con <br>
+            messageEl.innerHTML = text;
             if (ms > 0) setTimeout(() => { messageEl.style.display = 'none'; }, ms);
         }
-
-        // -------------------------------------------------------------------
-        // ---------- 9. FÍSICA Y LÓGICA DE IA (ENEMIGOS) ----------
-        // Se ejecuta en cada frame, maneja la IA y el daño al jugador
-        // -------------------------------------------------------------------
-        function stepPhysics(dt) {
-            const playerPos = camera.position;
-
-            for (const en of enemies) {
-                if (!en.userData || !en.userData.alive) continue; // Saltar si está muerto
-
-                const enemyPhysObj = physicsObjects.find(p => p.mesh === en);
-                const toPlayer = new THREE.Vector3().subVectors(playerPos, en.position);
-                const dist = toPlayer.length();
-
-                // 1. Comprobar rango de visión
-                if (dist < CONFIG.ENEMY_SIGHT_RANGE) {
-                    toPlayer.normalize(); // Dirección hacia el jugador
-                    
-                    // 2. Comprobar línea de visión (Raycaster)
-                    raycaster.set(en.position, toPlayer);
-                    raycaster.far = dist;
-                    const hits = raycaster.intersectObjects(physicsObjects.filter(p => p.static).map(p => p.mesh));
-
-                    // Si no hay 'hits' o el primer hit está MÁS LEJOS que el jugador, hay línea de visión
-                    if (hits.length === 0 || hits[0].distance >= dist - 1) {
-                        
-                        // 3. Moverse hacia el jugador
-                        toPlayer.y = 0; // No volar
-                        en.position.addScaledVector(toPlayer, en.userData.speed * dt * 60);
-                        
-                        // Actualizar la Bounding Box del enemigo
-                        if(enemyPhysObj) enemyPhysObj.boundingBox.setFromObject(en);
-
-                        // 4. Atacar al jugador
-                        // (¡IMPORTANTE! Recalcular la distancia DESPUÉS de moverse)
-                        const newDist = playerPos.distanceTo(en.position);
-                        
-                        if (newDist < CONFIG.ENEMY_ATTACK_RANGE) {
-                            // Comprobar cooldown del ataque
-                            if (!en.userData._lastAttack || (performance.now() - en.userData._lastAttack) > CONFIG.ENEMY_ATTACK_COOLDOWN) {
-                                en.userData._lastAttack = performance.now(); // Resetear cooldown
-                                playerLife -= CONFIG.ENEMY_ATTACK_DAMAGE; // Bajar vida
-                                if (playerLife < 0) playerLife = 0;
-                                lifeEl.textContent = playerLife; // Actualizar HUD
-                                if (playerLife <= 0) onPlayerDead(); // Comprobar muerte
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // -------------------------------------------------------------------
-        // ---------- 10. FUNCIONES DE ESTADO DEL JUGADOR ----------
-        // -------------------------------------------------------------------
         
-        // Se llama cuando la vida del jugador llega a 0
         function onPlayerDead() {
-            showMessage('- GAME OVER -\n<span style="font-size: 18px">Reinicia la página para volver a jugar</span>', 10000);
-            controls.unlock(); // Desbloquear cursor
-            // (Comentado porque onMouseDown fue eliminado)
-            // window.removeEventListener('mousedown', onMouseDown);
+            showMessage('- GAME OVER -\n<span style="font-size: 18px">Recarga la página para volver a jugar</span>', 10000);
         }
-
-        // Cambia la animación del jugador suavemente
-        function playAction(name) {
-            if (actionCurrent && actionCurrent.name === name) return; // No hacer nada si ya es esa
-
-            const newAction = actions[name];
-            if (!newAction) {
-                console.warn(`No se encontró la animación: ${name}`);
-                return;
-            }
-
-            // Preparar la nueva acción
-            newAction.reset();
-            newAction.setLoop(THREE.LoopRepeat, Infinity); // Asumir que loopea
-            newAction.play();
-
-            // Transición suave (cross-fade)
-            if (actionCurrent) {
-                actionCurrent.crossFadeTo(newAction, 0.3, true);
-            }
-
-            actionCurrent = newAction;
-            actionCurrent.name = name; // Guardar nombre para la próxima comprobación
-        }
-
-
-        // -------------------------------------------------------------------
-        // ---------- 11. FÍSICA Y MOVIMIENTO DEL JUGADOR ----------
-        // Se ejecuta en cada frame. Mueve al jugador y comprueba colisiones
-        // -------------------------------------------------------------------
-    function updatePlayerMovement(dt) {
-        const speed = CONFIG.PLAYER_SPEED; // Puedes añadir sprint si quieres con un botón del controlador
-        const moveForward = new THREE.Vector3();
-        const moveRight = new THREE.Vector3();
-
-        // Dirección hacia donde mira la cámara
-        camera.getWorldDirection(moveForward);
-        moveForward.y = 0;
-        moveForward.normalize();
-        moveRight.crossVectors(new THREE.Vector3(0,1,0), moveForward).normalize();
-
-        // --- Input VR ---
-        let vrDir = new THREE.Vector3(0, 0, 0);
-
-        if (controller1 && controller1.userData.gamepad) {
-            const gp = controller1.userData.gamepad;
-            // gp.axes[2] -> izquierda/derecha, gp.axes[3] -> adelante/atrás
-            vrDir.x = gp.axes[2]; // izquierda/derecha
-            vrDir.z = gp.axes[3]; // adelante/atrás
-        }
-
-        // Aplicar movimiento horizontal basado en joystick
-        playerVelocity.x += moveRight.x * -vrDir.x * speed * dt + moveForward.x * -vrDir.z * speed * dt;
-        playerVelocity.z += moveRight.z * -vrDir.x * speed * dt + moveForward.z * -vrDir.z * speed * dt;
-
-        // Aplicar gravedad
-        playerVelocity.y += CONFIG.GRAVITY * dt;
-
-        // --- Lógica de Colisión (AABB) ---
-        const delta = playerVelocity.clone().multiplyScalar(dt);
-        const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
-
-        // 1. Actualizar hitbox
-        playerCollider.setFromCenterAndSize(
-            camera.position,
-            new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
-        );
-
-        // 2. Colisión eje Y
-        const futureYCollider = playerCollider.clone().translate(new THREE.Vector3(0, delta.y, 0));
-        let playerOnGround = false;
-
-        for (const obj of physicsObjects) {
-            if (futureYCollider.intersectsBox(obj.boundingBox)) {
-                if (playerVelocity.y < 0) {
-                    playerOnGround = true;
-                    camera.position.y = obj.boundingBox.max.y + playerHalfHeight;
-                }
-                playerVelocity.y = 0;
-                delta.y = 0;
-                break;
-            }
-        }
-
-        // 3. Colisión eje X
-        const futureXCollider = playerCollider.clone().translate(new THREE.Vector3(delta.x, 0, 0));
-        for (const obj of physicsObjects) {
-            if (futureXCollider.intersectsBox(obj.boundingBox)) {
-                playerVelocity.x = 0;
-                delta.x = 0;
-                break;
-            }
-        }
-
-        // 4. Colisión eje Z
-        const futureZCollider = playerCollider.clone().translate(new THREE.Vector3(0, 0, delta.z));
-        for (const obj of physicsObjects) {
-            if (futureZCollider.intersectsBox(obj.boundingBox)) {
-                playerVelocity.z = 0;
-                delta.z = 0;
-                break;
-            }
-        }
-
-        // 5. Aplicar movimiento
-        camera.position.add(delta);
-
-        // 6. Evitar caer por debajo del suelo
-        if (camera.position.y < playerHalfHeight) {
-            playerVelocity.y = 0;
-            camera.position.y = playerHalfHeight;
-            playerOnGround = true;
-        }
-
-        // 7. Chequear llegada a la meta
-        const goal = scene.userData.goal;
-        if (goal && playerLife > 0) {
-            const distGoal = camera.position.distanceTo(goal.position);
-            if (distGoal < 50) {
-                showMessage('¡GANASTE!\n<span style="font-size: 18px">Llegaste al portal</span>', 7000);
-                controls.unlock();
-                playerLife = -1; // Evitar ganar/morir de nuevo
-            }
-        }
-
-        // --- Saltar (botón del controlador) ---
-        if (controller1 && controller1.userData.gamepad) {
-            const gp = controller1.userData.gamepad;
-            // Suponiendo botón 0 (trigger principal) como salto
-            if (gp.buttons[0].pressed && playerOnGround) {
-                playerVelocity.y = CONFIG.PLAYER_JUMP_FORCE;
-                playerOnGround = false;
-            }
-        }
-    }
-
-
-        // -------------------------------------------------------------------
-        // ---------- 12. LOOP PRINCIPAL (animate) ----------
-        // Se ejecuta 60 veces por segundo. Mueve todo y dibuja la pantalla.
-        // -------------------------------------------------------------------
-        // -------------------------------------------------------------------
-
-        function animate() {
-    renderer.setAnimationLoop(() => {
-        const delta = clock.getDelta();
-
-        // --- VR MOVEMENT ---
-        if (renderer.xr.isPresenting) {
-            vrMove.set(0, 0, 0);
-            vrRotation = 0;
-
-            // Movimiento con stick izquierdo (controller1 usually)
-            if (controller1.inputSource && controller1.inputSource.gamepad) {
-                const gp = controller1.inputSource.gamepad;
-                const x = gp.axes[2] || 0; // lateral
-                const y = gp.axes[3] || 0; // adelante/atrás
-
-                // mover en dirección de la cámara
-                const dir = new THREE.Vector3();
-                camera.getWorldDirection(dir);
-                dir.y = 0;
-                dir.normalize();
-
-                const right = new THREE.Vector3();
-                right.crossVectors(dir, upVector).normalize();
-
-                vrMove.addScaledVector(dir, -y * CONFIG.PLAYER_SPEED * delta);
-                vrMove.addScaledVector(right, x * CONFIG.PLAYER_SPEED * delta);
-            }
-
-            // Rotación suave con stick derecho (controller2)
-            if (controller2.inputSource && controller2.inputSource.gamepad) {
-                const gp = controller2.inputSource.gamepad;
-                const rx = gp.axes[2] || 0; // rotación horizontal
-                vrRotation = rx * 1.8 * delta; // sensibilidad
-            }
-
-            // Aplicar movimiento
-            controls.getObject().position.add(vrMove);
-
-            // Aplicar rotación
-            controls.getObject().rotation.y -= vrRotation;
-        }
-
-        // --- Movimiento con teclado (modo no-VR) ---
-        handleKeyboardMovement(delta);
-
-        // Actualizar física y animaciones
-        updatePlayerPhysics(delta);
-        updateHUD();
-        if (mixer) mixer.update(delta);
-
-        renderer.render(scene, camera);
-        stats.update();
-    });
-}
-
-        // ---------------------------------------------------
-        // Configuración para VR
-        // ---------------------------------------------------
-        renderer.xr.enabled = true; // Activar VR
-        document.body.appendChild(VRButton.createButton(renderer)); // Botón de entrada a VR
-        renderer.setAnimationLoop(animate); // Llama a animate automáticamente en VR
-
-
-        // -------------------------------------------------------------------
-        // ---------- 13. UTILIDADES ----------
-        // -------------------------------------------------------------------
         
-        // Se llama cuando el usuario cambia el tamaño de la ventana
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-        
-            // Actualizar también la cámara de la esquina
-            if (thirdPersonCamera) {
-                const w = window.innerWidth * 0.20;
-                const h = window.innerHeight * 0.20;
-                thirdPersonCamera.aspect = w / h;
-                thirdPersonCamera.updateProjectionMatrix();
-            }
-
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
-
-
-        // 4️⃣ Función para actualizar HUD
-        function updateHUD() {
-            hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
-
-            // Fondo semi-transparente
-            hudCtx.fillStyle = 'rgba(0,0,0,0.5)';
-            hudCtx.fillRect(0, 0, hudCanvas.width, hudCanvas.height);
-
-            // Vida del jugador
-            hudCtx.fillStyle = 'white';
-            hudCtx.font = '48px Arial';
-            hudCtx.fillText(`Vida: ${playerLife}`, 20, 60);
-
-            // Enemigos restantes
-            const aliveEnemies = enemies.filter(e => e.userData && e.userData.alive).length;
-            hudCtx.fillText(`Enemigos: ${aliveEnemies}`, 20, 120);
-
-            // Objetivo
-            hudCtx.font = '28px Arial';
-            hudCtx.fillStyle = 'yellow';
-            hudCtx.fillText('Objetivo: llegar al final del laberinto', 20, 180);
-
-            // Mensaje temporal (opcional)
-            if (messageEl.textContent) {
-                hudCtx.fillStyle = 'cyan';
-                hudCtx.font = '32px Arial';
-                hudCtx.fillText(messageEl.textContent, 20, 220);
+        
+        // -------------------------------------------------------------------
+        // ---------- Loop de Animación ----------
+        // -------------------------------------------------------------------
+        function animate() {
+            const dt = clock.getDelta();
+            
+            if (mixer) mixer.update(dt);
+            
+            if (playerLife > 0) {
+                updateVRMovement();
+                updatePhysics(dt);
             }
-
-            hudTexture.needsUpdate = true;
+            
+            renderer.render(scene, camera);
+            stats.update();
         }
-
-            document.getElementById("startBtn").addEventListener("click", () => {
-            document.getElementById("portada").style.opacity = "0";
-            setTimeout(() => {
-                document.getElementById("portada").style.display = "none";
-            }, 500);
-        });
-</script>
-
+        
+        // Inicializar
+        init();
+        renderer.setAnimationLoop(animate);
+    </script>
 </body>
 </html>
