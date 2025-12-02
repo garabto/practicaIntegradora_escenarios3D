@@ -636,15 +636,26 @@ scene.add(playerRig);
             }
             
             // Aplicar movimiento
-            camera.position.add(delta);
-            
-            // Limitar altura mínima
-            if (camera.position.y < playerHalfHeight) {
-                playerVelocity.y = 0;
-                camera.position.y = playerHalfHeight;
-                playerOnGround = true;
-            }
-            
+            // Actualizar collider respecto al rig
+playerCollider.setFromCenterAndSize(
+    playerRig.position,
+    new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
+);
+
+// Aplicar movimiento y gravedad al rig
+playerVelocity.y += CONFIG.GRAVITY * dt;
+delta = playerVelocity.clone().multiplyScalar(dt);
+playerRig.position.add(new THREE.Vector3(delta.x, 0, delta.z));
+playerRig.position.y += delta.y;
+
+// Limitar altura mínima
+playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
+if (playerRig.position.y < playerHalfHeight) {
+    playerVelocity.y = 0;
+    playerRig.position.y = playerHalfHeight;
+    playerOnGround = true;
+}
+
             // IA de enemigos
             const playerPos = camera.position;
             for (const enemy of enemies) {
