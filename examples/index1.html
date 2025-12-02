@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alienrinto VR - GitHub Pages Version</title>
+    <link rel="icon" type="image/png" href="assets/icono.png">
+    
+    <style>
+        /* ESTILOS GENERALES */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+        
+        canvas {
+            display: block;
+            cursor: pointer;
+        }
+        
+        /* PORTADA */
+        #portada {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            text-align: center;
+        }
+        
+        #portada-content {
+            background: rgba(0,0,0,0.8);
+            padding: 40px;
+            border-radius: 10px;
+            border: 2px solid #22ff88;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(34,255,136,0.3);
+        }
+        
+        #startBtn {
+            background: #22ff88;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+        
+        #startBtn:hover {
+            background: #44ffaa;
+            transform: scale(1.05);
+        }
+        
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #22ff88;
+            z-index: 100;
+            min-width: 150px;
+        }
+        
+        /* MENSAJES */
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #22ff88;
+            display: none;
+            z-index: 1000;
+            text-align: center;
+            max-width: 500px;
+        }
+        
+        /* INDICADORES VR */
+        #vr-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #22ff88;
+            display: none;
+            z-index: 100;
+        }
+        
+        /* LOADER */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #22ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    
+    <!-- Three.js desde CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.164.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.164.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.164.0/examples/js/loaders/RGBELoader.js"></script>
+</head>
+<body>
+    <!-- LOADER -->
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- PORTADA -->
+    <div id="portada">
+        <div id="portada-content">
+            <h1 style="color:#22ff88; margin-bottom:10px;">ALIENRINTO VR</h1>
+            <p style="margin-bottom:20px;">Laberinto Alienígena para Meta Quest 3</p>
+            
+            <div style="text-align:left; background:rgba(34,255,136,0.1); padding:15px; border-radius:8px; margin:20px 0;">
+                <h3 style="color:#22ff88; margin-bottom:10px;">🎮 CONTROLES QUEST 3:</h3>
+                <p>• <strong>Joystick izquierdo</strong>: Movimiento</p>
+                <p>• <strong>Gatillo derecho</strong>: Disparar</p>
+                <p>• <strong>Botón A/X</strong>: Saltar</p>
+                <p>• <strong>Click izquierdo</strong>: Disparar (modo escritorio)</p>
+            </div>
+            
+            <div style="text-align:left; background:rgba(255,165,0,0.1); padding:15px; border-radius:8px; margin:20px 0;">
+                <h3 style="color:#ff9900;">⚠️ IMPORTANTE PARA GITHUB PAGES:</h3>
+                <p>1. Funciona en modo escritorio (WASD + mouse)</p>
+                <p>2. Para VR en Quest 3: usa HTTPS y permite contenido inseguro</p>
+            </div>
+            
+            <button id="startBtn">INICIAR EXPERIENCIA</button>
+            
+            <div style="margin-top:20px; font-size:12px; color:#ccc;">
+                <p>Equipo: Judith • Sergio • Mariana</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- HUD -->
+    <div id="hud" style="display:none;">
+        <div style="font-size:18px; margin-bottom:10px;">
+            <strong style="color:#22ff88;">ALIENRINTO</strong>
+        </div>
+        <div style="margin-bottom:5px;">
+            <span style="color:#22ff88;">❤️ Vida:</span> <span id="life" style="font-weight:bold;">100</span>
+        </div>
+        <div style="margin-bottom:5px;">
+            <span style="color:#ff4444;">👾 Enemigos:</span> <span id="enemiesCount" style="font-weight:bold;">0</span>
+        </div>
+        <div id="mode-indicator" style="margin-top:10px; font-size:12px; color:#ff9900;">
+            Modo: Inicializando...
+        </div>
+    </div>
+    
+    <!-- MENSAJES -->
+    <div id="message"></div>
+    
+    <!-- CONTROLES VR -->
+    <div id="vr-controls">
+        <h3 style="color:#22ff88; margin-bottom:10px;">CONTROLES ACTIVOS</h3>
+        <p>✅ Joystick: Movimiento</p>
+        <p>✅ Gatillo: Disparar</p>
+        <p id="vr-status">Esperando conexión VR...</p>
+    </div>
+
+    <script>
+        // ============================================
+        // VARIABLES GLOBALES
+        // ============================================
+        let scene, camera, renderer, controls;
+        let playerLife = 100;
+        const enemies = [];
+        const physicsObjects = [];
+        
+        // Movimiento
+        const keys = {};
+        const playerVelocity = new THREE.Vector3();
+        let playerOnGround = false;
+        const GRAVITY = -30;
+        const PLAYER_SPEED = 5;
+        const JUMP_FORCE = 10;
+        
+        // Estado del juego
+        let gameStarted = false;
+        let isVRMode = false;
+        let vrSession = null;
+        let controller1, controller2;
+        
+        // Elementos DOM
+        const loader = document.getElementById('loader');
+        const portada = document.getElementById('portada');
+        const startBtn = document.getElementById('startBtn');
+        const hud = document.getElementById('hud');
+        const lifeEl = document.getElementById('life');
+        const enemiesCountEl = document.getElementById('enemiesCount');
+        const modeIndicator = document.getElementById('mode-indicator');
+        const vrControls = document.getElementById('vr-controls');
+        const messageDiv = document.getElementById('message');
+        const vrStatus = document.getElementById('vr-status');
+        
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+        startBtn.addEventListener('click', initGame);
+        
+        function initGame() {
+            loader.style.display = 'flex';
+            portada.style.display = 'none';
+            
+            // Inicializar Three.js después de un pequeño delay
+            setTimeout(() => {
+                setupScene();
+                setupEventListeners();
+                createLevel();
+                
+                loader.style.display = 'none';
+                hud.style.display = 'block';
+                
+                // Iniciar loop de animación
+                animate();
+            }, 500);
+        }
+        
+        function setupScene() {
+            // 1. ESCENA
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0xcccccc, 50, 500);
+            
+            // 2. CÁMARA (Primera Persona)
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 1.6, 0); // Altura de los ojos
+            camera.rotation.order = 'YXZ';
+            
+            // 3. RENDERIZADOR
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            
+            // Intentar habilitar WebXR si está disponible
+            if ('xr' in navigator && renderer.xr) {
+                renderer.xr.enabled = true;
+                isVRMode = true;
+                setupVR();
+            } else {
+                isVRMode = false;
+                setupDesktopControls();
+            }
+            
+            modeIndicator.textContent = isVRMode ? 'Modo VR Activado' : 'Modo Escritorio (WASD + Mouse)';
+            
+            // 4. ILUMINACIÓN
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            // 5. PISO
+            const floorGeometry = new THREE.PlaneGeometry(200, 200);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x228822,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Añadir piso a física
+            floor.userData.isGround = true;
+        }
+        
+        function setupDesktopControls() {
+            // Controles FPS para escritorio
+            controls = new THREE.PointerLockControls(camera, renderer.domElement);
+            scene.add(controls.getObject());
+            
+            // Habilitar al hacer click
+            renderer.domElement.addEventListener('click', () => {
+                if (!gameStarted) return;
+                controls.lock();
+            });
+            
+            // Eventos de bloqueo/desbloqueo
+            controls.addEventListener('lock', () => {
+                console.log('Controles bloqueados');
+            });
+            
+            controls.addEventListener('unlock', () => {
+                console.log('Controles desbloqueados');
+            });
+            
+            // Mostrar instrucciones
+            showMessage('Haz click para bloquear el cursor\nWASD = Movimiento\nClick = Disparar\nEspacio = Saltar', 5000);
+        }
+        
+        function setupVR() {
+            try {
+                // Configurar controladores VR
+                controller1 = renderer.xr.getController(0);
+                controller2 = renderer.xr.getController(1);
+                
+                // Añadir a la escena
+                scene.add(controller1);
+                scene.add(controller2);
+                
+                // Configurar eventos
+                controller1.addEventListener('selectstart', onVRSelectStart);
+                controller1.addEventListener('selectend', onVRSelectEnd);
+                controller2.addEventListener('selectstart', () => handleShoot());
+                
+                // Crear modelos visuales para los controladores
+                const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.1);
+                const material = new THREE.MeshBasicMaterial({ color: 0x22ff88 });
+                
+                const controllerMesh1 = new THREE.Mesh(geometry, material);
+                controller1.add(controllerMesh1);
+                
+                const controllerMesh2 = new THREE.Mesh(geometry, material);
+                controller2.add(controllerMesh2);
+                
+                // Mostrar controles VR
+                vrControls.style.display = 'block';
+                vrStatus.textContent = 'VR Listo - Usa joystick para moverte';
+                
+            } catch (error) {
+                console.warn('Error configurando VR:', error);
+                isVRMode = false;
+                setupDesktopControls();
+            }
+        }
+        
+        function onVRSelectStart(event) {
+            console.log('VR select start', event);
+        }
+        
+        function onVRSelectEnd(event) {
+            console.log('VR select end', event);
+        }
+        
+        function setupEventListeners() {
+            // Teclado
+            window.addEventListener('keydown', (e) => {
+                keys[e.code] = true;
+                
+                // Saltar
+                if (e.code === 'Space' && playerOnGround && !isVRMode) {
+                    playerVelocity.y = JUMP_FORCE;
+                    playerOnGround = false;
+                }
+                
+                // Disparar (tecla F)
+                if (e.code === 'KeyF') {
+                    handleShoot();
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+            });
+            
+            // Ventana
+            window.addEventListener('resize', onWindowResize);
+            
+            // Disparo con click (modo escritorio)
+            renderer.domElement.addEventListener('click', () => {
+                if (!isVRMode && controls && controls.isLocked) {
+                    handleShoot();
+                }
+            });
+        }
+        
+        // ============================================
+        // CREACIÓN DEL NIVEL
+        // ============================================
+        function createLevel() {
+            // Laberinto básico
+            const wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x888888,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            // Muros exteriores
+            createWall(0, 2.5, -25, 50, 5, 1); // Norte
+            createWall(0, 2.5, 25, 50, 5, 1);  // Sur
+            createWall(25, 2.5, 0, 1, 5, 50);  // Este
+            createWall(-25, 2.5, 0, 1, 5, 50); // Oeste
+            
+            // Muros internos
+            createWall(0, 2.5, 0, 30, 5, 1);
+            createWall(10, 2.5, 10, 1, 5, 15);
+            createWall(-10, 2.5, -10, 1, 5, 15);
+            createWall(5, 2.5, -10, 10, 5, 1);
+            createWall(-5, 2.5, 10, 10, 5, 1);
+            
+            // Enemigos
+            const enemyPositions = [
+                [15, 1.5, 15],
+                [-15, 1.5, -15],
+                [20, 1.5, -20],
+                [-20, 1.5, 20],
+                [0, 1.5, 18]
+            ];
+            
+            enemyPositions.forEach(pos => {
+                createEnemy(...pos);
+            });
+            
+            // Portal
+            const portalGeometry = new THREE.TorusGeometry(2, 0.4, 16, 100);
+            const portalMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x22ff88,
+                emissive: 0x22ff88,
+                emissiveIntensity: 1,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const portal = new THREE.Mesh(portalGeometry, portalMaterial);
+            portal.position.set(22, 2, 22);
+            portal.rotation.x = Math.PI / 2;
+            scene.add(portal);
+            
+            // Añadir luz al portal
+            const portalLight = new THREE.PointLight(0x22ff88, 2, 30);
+            portalLight.position.copy(portal.position);
+            portalLight.position.y += 2;
+            scene.add(portalLight);
+            
+            scene.userData.goal = portal;
+            
+            gameStarted = true;
+            console.log('Nivel creado');
+        }
+        
+        function createWall(x, y, z, width, height, depth) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x666666,
+                roughness: 0.8
+            });
+            
+            const wall = new THREE.Mesh(geometry, material);
+            wall.position.set(x, y, z);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            
+            scene.add(wall);
+            
+            // Añadir a física
+            wall.userData.isWall = true;
+            physicsObjects.push(wall);
+        }
+        
+        function createEnemy(x, y, z) {
+            const geometry = new THREE.ConeGeometry(0.5, 2, 8);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xff4444,
+                emissive: 0x440000
+            });
+            
+            const enemy = new THREE.Mesh(geometry, material);
+            enemy.position.set(x, y, z);
+            enemy.castShadow = true;
+            
+            enemy.userData = {
+                health: 50,
+                speed: 0.02 + Math.random() * 0.03,
+                alive: true,
+                isEnemy: true
+            };
+            
+            scene.add(enemy);
+            enemies.push(enemy);
+            physicsObjects.push(enemy);
+            
+            updateEnemiesHUD();
+        }
+        
+        // ============================================
+        // MOVIMIENTO Y FÍSICA
+        // ============================================
+        function updateMovement(deltaTime) {
+            if (!gameStarted) return;
+            
+            // MOVIMIENTO PARA VR
+            if (isVRMode && renderer.xr.isPresenting) {
+                updateVRMovement(deltaTime);
+            }
+            // MOVIMIENTO PARA ESCRITORIO
+            else if (controls && controls.isLocked) {
+                updateDesktopMovement(deltaTime);
+            }
+            
+            // APLICAR GRAVEDAD
+            playerVelocity.y += GRAVITY * deltaTime;
+            
+            // MOVER JUGADOR
+            let newPosition;
+            
+            if (isVRMode) {
+                // En VR, la cámara ya está en la cabeza del jugador
+                newPosition = camera.position.clone();
+                newPosition.y += playerVelocity.y * deltaTime;
+            } else {
+                // En escritorio, usar la posición de los controles
+                newPosition = controls.getObject().position.clone();
+                newPosition.y += playerVelocity.y * deltaTime;
+            }
+            
+            // DETECTAR COLISIONES
+            playerOnGround = false;
+            const playerHeight = 1.8;
+            const playerRadius = 0.5;
+            
+            // Verificar colisión con el suelo
+            if (newPosition.y < playerHeight / 2) {
+                newPosition.y = playerHeight / 2;
+                playerVelocity.y = 0;
+                playerOnGround = true;
+            }
+            
+            // Verificar colisión con paredes
+            for (const obj of physicsObjects) {
+                if (obj.userData.isWall || obj.userData.isEnemy) {
+                    const objBox = new THREE.Box3().setFromObject(obj);
+                    const playerBox = new THREE.Box3(
+                        new THREE.Vector3(newPosition.x - playerRadius, newPosition.y - playerHeight/2, newPosition.z - playerRadius),
+                        new THREE.Vector3(newPosition.x + playerRadius, newPosition.y + playerHeight/2, newPosition.z + playerRadius)
+                    );
+                    
+                    if (playerBox.intersectsBox(objBox)) {
+                        // Empujar al jugador fuera del objeto
+                        const overlap = new THREE.Box3();
+                        overlap.copy(playerBox).intersect(objBox);
+                        
+                        const overlapSize = overlap.getSize(new THREE.Vector3());
+                        
+                        if (overlapSize.x < overlapSize.z) {
+                            if (newPosition.x < obj.position.x) {
+                                newPosition.x -= overlapSize.x;
+                            } else {
+                                newPosition.x += overlapSize.x;
+                            }
+                        } else {
+                            if (newPosition.z < obj.position.z) {
+                                newPosition.z -= overlapSize.z;
+                            } else {
+                                newPosition.z += overlapSize.z;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ACTUALIZAR POSICIÓN
+            if (isVRMode) {
+                camera.position.copy(newPosition);
+            } else if (controls) {
+                controls.getObject().position.copy(newPosition);
+            }
+            
+            // VERIFICAR VICTORIA
+            const goal = scene.userData.goal;
+            if (goal) {
+                let playerPos;
+                if (isVRMode) {
+                    playerPos = camera.position;
+                } else if (controls) {
+                    playerPos = controls.getObject().position;
+                }
+                
+                if (playerPos && playerPos.distanceTo(goal.position) < 3) {
+                    showMessage('¡VICTORIA! Llegaste al portal', 5000);
+                }
+            }
+        }
+        
+        function updateVRMovement(deltaTime) {
+            if (!controller1 || !renderer.xr.isPresenting) return;
+            
+            try {
+                const session = renderer.xr.getSession();
+                if (!session) return;
+                
+                // Obtener gamepads de los controladores
+                const gamepads = navigator.getGamepads();
+                
+                for (const gamepad of gamepads) {
+                    if (!gamepad) continue;
+                    
+                    // Joystick izquierdo (ejes 2 y 3 en Oculus)
+                    const joystickX = gamepad.axes[2] || 0;
+                    const joystickY = gamepad.axes[3] || 0;
+                    
+                    const deadzone = 0.15;
+                    
+                    if (Math.abs(joystickX) > deadzone || Math.abs(joystickY) > deadzone) {
+                        // Calcular dirección basada en la orientación de la cámara
+                        const forward = new THREE.Vector3();
+                        camera.getWorldDirection(forward);
+                        forward.y = 0;
+                        forward.normalize();
+                        
+                        const right = new THREE.Vector3();
+                        right.crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
+                        
+                        // Movimiento combinado
+                        const moveX = right.x * joystickX + forward.x * joystickY;
+                        const moveZ = right.z * joystickX + forward.z * joystickY;
+                        
+                        // Aplicar movimiento
+                        const speed = PLAYER_SPEED * deltaTime * 60;
+                        camera.position.x += moveX * speed;
+                        camera.position.z += moveZ * speed;
+                        
+                        vrStatus.textContent = `Moviéndose (${joystickX.toFixed(2)}, ${joystickY.toFixed(2)})`;
+                    } else {
+                        vrStatus.textContent = 'VR Activo - Mueve el joystick';
+                    }
+                    
+                    // Botón A/X para saltar
+                    if (gamepad.buttons[0] && gamepad.buttons[0].pressed && playerOnGround) {
+                        playerVelocity.y = JUMP_FORCE;
+                        playerOnGround = false;
+                    }
+                }
+            } catch (error) {
+                console.warn('Error en movimiento VR:', error);
+            }
+        }
+        
+        function updateDesktopMovement(deltaTime) {
+            if (!controls || !controls.isLocked) return;
+            
+            // Movimiento WASD
+            const moveSpeed = PLAYER_SPEED * deltaTime * 60;
+            const velocity = new THREE.Vector3();
+            
+            if (keys['KeyW']) velocity.z -= moveSpeed;
+            if (keys['KeyS']) velocity.z += moveSpeed;
+            if (keys['KeyA']) velocity.x -= moveSpeed;
+            if (keys['KeyD']) velocity.x += moveSpeed;
+            
+            // Aplicar velocidad
+            if (velocity.length() > 0) {
+                velocity.normalize().multiplyScalar(moveSpeed);
+                controls.getObject().translateX(velocity.x);
+                controls.getObject().translateZ(velocity.z);
+            }
+        }
+        
+        // ============================================
+        // LÓGICA DEL JUEGO
+        // ============================================
+        function updateEnemies(deltaTime) {
+            let playerPos;
+            
+            if (isVRMode) {
+                playerPos = camera.position;
+            } else if (controls) {
+                playerPos = controls.getObject().position;
+            } else {
+                return;
+            }
+            
+            enemies.forEach(enemy => {
+                if (!enemy.userData.alive) return;
+                
+                // Moverse hacia el jugador
+                const direction = new THREE.Vector3();
+                direction.subVectors(playerPos, enemy.position);
+                direction.y = 0;
+                
+                if (direction.length() > 0.5) {
+                    direction.normalize();
+                    enemy.position.addScaledVector(direction, enemy.userData.speed * deltaTime * 60);
+                }
+                
+                // Mirar hacia el jugador
+                enemy.lookAt(playerPos);
+                enemy.rotateX(Math.PI / 2);
+                
+                // Verificar ataque
+                if (direction.length() < 2) {
+                    playerLife -= 1 * deltaTime * 60;
+                    lifeEl.textContent = Math.max(0, Math.floor(playerLife));
+                    
+                    if (playerLife <= 0) {
+                        showMessage('GAME OVER');
+                        gameStarted = false;
+                    }
+                }
+            });
+        }
+        
+        function handleShoot() {
+            if (!gameStarted) return;
+            
+            // Raycaster para detectar impacto
+            const raycaster = new THREE.Raycaster();
+            
+            if (isVRMode) {
+                // Disparar desde el controlador derecho en VR
+                if (controller2) {
+                    raycaster.setFromCamera(new THREE.Vector2(0, 0), controller2);
+                } else {
+                    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                }
+            } else {
+                // Disparar desde el centro en escritorio
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            }
+            
+            raycaster.far = 100;
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                
+                // Buscar si es un enemigo
+                let enemy = hit.object;
+                while (enemy && !enemy.userData?.isEnemy) {
+                    enemy = enemy.parent;
+                }
+                
+                if (enemy && enemy.userData?.alive) {
+                    enemy.userData.health -= 25;
+                    
+                    // Efecto visual
+                    enemy.material.emissive = new THREE.Color(0xff0000);
+                    setTimeout(() => {
+                        if (enemy.material) {
+                            enemy.material.emissive = new THREE.Color(0x000000);
+                        }
+                    }, 100);
+                    
+                    // Verificar si murió
+                    if (enemy.userData.health <= 0) {
+                        enemy.userData.alive = false;
+                        enemy.visible = false;
+                        updateEnemiesHUD();
+                        
+                        // Efecto de muerte
+                        const explosionGeometry = new THREE.SphereGeometry(1, 8, 8);
+                        const explosionMaterial = new THREE.MeshBasicMaterial({ 
+                            color: 0xff9900,
+                            transparent: true,
+                            opacity: 0.7
+                        });
+                        
+                        const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
+                        explosion.position.copy(enemy.position);
+                        scene.add(explosion);
+                        
+                        setTimeout(() => scene.remove(explosion), 300);
+                    }
+                }
+            }
+            
+            // Efecto de disparo
+            const muzzleFlash = new THREE.PointLight(0xffff00, 5, 10);
+            
+            if (isVRMode && controller2) {
+                muzzleFlash.position.copy(controller2.position);
+            } else {
+                const forward = new THREE.Vector3();
+                camera.getWorldDirection(forward);
+                muzzleFlash.position.copy(camera.position).add(forward.multiplyScalar(0.5));
+            }
+            
+            scene.add(muzzleFlash);
+            setTimeout(() => scene.remove(muzzleFlash), 100);
+        }
+        
+        function updateEnemiesHUD() {
+            const alive = enemies.filter(e => e.userData?.alive).length;
+            enemiesCountEl.textContent = alive;
+            
+            if (alive === 0) {
+                showMessage('¡Todos los enemigos eliminados!\nEncuentra el portal verde', 3000);
+            }
+        }
+        
+        function showMessage(text, duration = 3000) {
+            messageDiv.innerHTML = text;
+            messageDiv.style.display = 'block';
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, duration);
+            }
+        }
+        
+        // ============================================
+        // UTILIDADES
+        // ============================================
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ============================================
+        // LOOP DE ANIMACIÓN
+        // ============================================
+        let lastTime = 0;
+        
+        function animate(currentTime = 0) {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            if (deltaTime > 0.1) return; // Evitar saltos grandes
+            
+            if (gameStarted) {
+                updateMovement(deltaTime);
+                updateEnemies(deltaTime);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Ocultar loader inicial
+        setTimeout(() => {
+            loader.style.display = 'none';
+        }, 1000);
+    </script>
+</body>
+</html>
