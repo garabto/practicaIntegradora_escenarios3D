@@ -258,6 +258,7 @@
         }
     }
     </script>
+
 </head>
 <body>
     <!-- Audio -->
@@ -342,9 +343,10 @@ const CONFIG = {
     ENEMY_ATTACK_RANGE: 15,
     ENEMY_ATTACK_DAMAGE: 8,
     
-    // Texturas (usaremos colores sólidos para simplificar)
-    // WALL_TEX: 'assets/textures/wall.jpg',
-    // FLOOR_TEX: 'assets/textures/floor.jpg',
+    // Texturas
+    FLOOR_TEX: 'assets/piso.jpg',
+    WALL_TEX: 'assets/paredes.jpg',
+    BACKGROUND_TEX: 'assets/fondo.hdr',
     
     // VR
     PLAYER_RADIUS: 0.35,
@@ -450,25 +452,43 @@ function initLights() {
 }
 
 /** ========= INICIALIZAR CIELO ========= */
+/** ========= INICIALIZAR CIELO ========= */
 function initSky() {
     try {
-        // Sky dome simplificado
-        const skyGeo = new THREE.SphereGeometry(2000, 48, 24);
-        const skyMat = new THREE.MeshBasicMaterial({
-            color: 0x0a1f35,
-            side: THREE.BackSide
+        // Cargar HDR como fondo
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(CONFIG.BACKGROUND_TEX, (texture) => {
+            // Configurar la textura HDR
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            texture.encoding = THREE.sRGBEncoding;
+            
+            // Usar como fondo de la escena principal
+            scene.background = texture;
+            scene.environment = texture; // Para reflexiones
+            
+            // Crear skybox más simple
+            const skyGeo = new THREE.SphereGeometry(1000, 60, 40);
+            const skyMat = new THREE.MeshBasicMaterial({
+                map: texture,
+                side: THREE.BackSide
+            });
+            
+            skyMesh = new THREE.Mesh(skyGeo, skyMat);
+            skyMesh.renderOrder = -2;
+            bgScene.add(skyMesh);
+            
+            console.log("Fondo HDR cargado correctamente");
+        }, undefined, (error) => {
+            console.error("Error al cargar HDR:", error);
+            // Fallback a color sólido
+            scene.background = new THREE.Color(0x06101a);
         });
         
-        skyMesh = new THREE.Mesh(skyGeo, skyMat);
-        skyMesh.renderOrder = -2;
-        skyMesh.frustumCulled = false;
-        bgScene.add(skyMesh);
-        
-        // Estrellas simplificadas
+        // Estrellas simplificadas (mantener como complemento)
         const starCount = 1000;
         const starPositions = new Float32Array(starCount * 3);
         for (let i = 0; i < starCount; i++) {
-            const r = 1400 + Math.random() * 400;
+            const r = 900 + Math.random() * 200;
             const a = Math.random() * Math.PI * 2;
             const b = Math.acos(2 * Math.random() - 1);
             starPositions[i * 3] = r * Math.sin(b) * Math.cos(a);
@@ -479,24 +499,21 @@ function initSky() {
         const starGeo = new THREE.BufferGeometry();
         starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
         const starMat = new THREE.PointsMaterial({
-            size: 2.2,
+            size: 1.5,
             sizeAttenuation: false,
             color: 0xffffff,
             fog: false,
-            depthTest: false,
             transparent: true,
-            opacity: 0.95
+            opacity: 0.8
         });
         
         starField = new THREE.Points(starGeo, starMat);
         starField.renderOrder = -1;
-        starField.matrixAutoUpdate = false;
-        starField.frustumCulled = false;
         bgScene.add(starField);
         
-        console.log("Cielo inicializado");
     } catch (error) {
         console.error("Error al inicializar cielo:", error);
+        scene.background = new THREE.Color(0x06101a);
     }
 }
 
@@ -697,6 +714,8 @@ function generateMaze(rows, cols, cellSize) {
         CONFIG.WALL_HEIGHT, 
         CONFIG.WALL_THICKNESS
     );
+
+
     
     // Material simple para paredes (sin textura)
     const wallMaterial = new THREE.MeshStandardMaterial({
@@ -910,6 +929,7 @@ function createPortalParticles(x, z) {
 // -------------------------------------------------------------------
 // ---------- CREACIÓN DEL PISO ----------
 // -------------------------------------------------------------------
+/** ========= CREACIÓN DEL PISO (con textura) ========= */
 function createFloor() {
     const maze = scene.userData.maze;
     if (!maze) return;
@@ -919,11 +939,19 @@ function createFloor() {
     const floorWidth = cols * cellSize + cellSize * 2;
     const floorHeight = rows * cellSize + cellSize * 2;
     
-    // Material simple para piso (sin textura)
+    // Cargar textura del piso
+    const textureLoader = new THREE.TextureLoader();
+    const floorTexture = textureLoader.load(CONFIG.FLOOR_TEX, (tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        // Ajustar el repeat según el tamaño del laberinto
+        tex.repeat.set(rows / 2, cols / 2);
+    });
+    
     const floorMat = new THREE.MeshStandardMaterial({ 
-        color: 0x333333, 
+        map: floorTexture,
         roughness: 0.9,
-        metalness: 0.1
+        metalness: 0.05
     });
     
     const floor = new THREE.Mesh(
@@ -936,7 +964,7 @@ function createFloor() {
     floor.receiveShadow = true;
     scene.add(floor);
     
-    console.log(`Piso creado: ${floorWidth}x${floorHeight}`);
+    console.log(`Piso texturizado creado: ${floorWidth}x${floorHeight}`);
 }
 
 // -------------------------------------------------------------------
