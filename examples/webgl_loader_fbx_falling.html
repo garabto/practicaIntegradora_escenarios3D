@@ -242,444 +242,850 @@
     </div>
 
     <script>
-        // Variables principales
-        let scene, camera, renderer, controls;
-        let movementJoystick, rotationJoystick;
-        let objects = [];
-        let isLocked = false;
-        let velocity = new THREE.Vector3();
-        let direction = new THREE.Vector3();
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-        let canJump = false;
-        let prevTime = performance.now();
-        
-        // Inicialización de la escena
-        function init() {
-            // Crear escena
-            scene = new THREE.Scene();
-            scene.fog = new THREE.Fog(0x87CEEB, 10, 150);
-            
-            // Crear cámara en primera persona
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.6, 5);
-            
-            // Crear renderizador
-            const canvas = document.getElementById('renderer');
-            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-            renderer.setSize(canvas.parentElement.clientWidth, canvas.parentElement.clientHeight);
-            renderer.setClearColor(0x87CEEB);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            
-            // Configurar controles de puntero (para ratón)
-            controls = new THREE.PointerLockControls(camera, canvas);
-            scene.add(controls.getObject());
-            
-            // Configurar joysticks virtuales
-            setupJoysticks();
-            
-            // Configurar luces
-            setupLights();
-            
-            // Crear mundo
-            createWorld();
-            
-            // Configurar eventos
-            setupEventListeners();
-            
-            // Actualizar estado
-            updateStatus("Mundo virtual cargado. Haz clic en la pantalla para activar controles.");
-            
-            // Iniciar animación
-            animate();
-        }
-        
-        // Configurar joysticks virtuales
-        function setupJoysticks() {
-            // Joystick de movimiento
-            const movementBase = document.getElementById('movement-joystick-base');
-            const movementHandle = document.getElementById('movement-joystick-handle');
-            
-            // Joystick de rotación
-            const rotationBase = document.getElementById('rotation-joystick-base');
-            const rotationHandle = document.getElementById('rotation-joystick-handle');
-            
-            // Variables para rastrear estado de joysticks
-            movementJoystick = {
-                active: false,
-                x: 0,
-                y: 0,
-                base: movementBase,
-                handle: movementHandle
+        // main.js
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+// -------------------------------------------------------------------
+// ---------- CONFIGURACIÓN ----------
+// -------------------------------------------------------------------
+const CONFIG = {
+    // Laberinto
+    MAZE_COLS: 11,
+    MAZE_ROWS: 11,
+    CELL_SIZE: 80,
+    WALL_HEIGHT: 36,
+    WALL_THICKNESS: 8,
+    
+    // Enemigos
+    ENEMY_COUNT: 8,
+    ENEMY_HEALTH: 50,
+    ENEMY_SPEED_MIN: 0.8,
+    ENEMY_SPEED_MAX: 1.6,
+    ENEMY_SIGHT_RANGE: 400,
+    ENEMY_ATTACK_RANGE: 15,
+    ENEMY_ATTACK_DAMAGE: 8,
+    
+    // Texturas
+    WALL_TEX: 'models/rgbe/paredes.jpg',
+    FLOOR_TEX: 'models/rgbe/piso.jpg',
+    
+    // VR
+    PLAYER_RADIUS: 0.35,
+    VR_WALK_SPEED: 5.5,
+    VR_STRAFE_SPEED: 4.8,
+    
+    // Otros
+    FOG_DENSITY: 0.028,
+    ARC_STEPS: 40,
+    ARC_SPEED: 7.5,
+    ARC_GRAVITY: 9.8,
+    MAX_SLOPE_DEG: 45
+};
+
+/** ========= DOM / UI ========= */
+const hudTotal = document.getElementById('totalPumpkins');
+const hudHit   = document.getElementById('hitPumpkins');
+
+/** ========= RENDERER / SCENES / CAMERA ========= */
+const canvas = document.getElementById('scene');
+const ambientEl = document.getElementById('ambient');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.xr.enabled = true;
+renderer.autoClear = true;
+
+// Escena principal
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06101a);
+scene.fog = new THREE.FogExp2(0x06101a, CONFIG.FOG_DENSITY);
+
+// Escena de fondo (cielo/estrellas/luna)
+const bgScene = new THREE.Scene();
+const bgCam = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 5000);
+
+// Cámara del jugador
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 500);
+const player = new THREE.Group();
+player.add(camera);
+scene.add(player);
+
+// Variables globales para el juego
+const physicsObjects = [];
+const enemies = [];
+const pumpkinColliders = []; // Mantenemos para compatibilidad con UI existente
+
+/** ========= IBL / HDRI ========= */
+const pmremGen = new THREE.PMREMGenerator(renderer);
+pmremGen.compileEquirectangularShader();
+async function setHDRI(url) {
+  const hdr = await new Promise((res, rej) => new RGBELoader().load(url, (t)=>res(t), undefined, rej));
+  const env = pmremGen.fromEquirectangular(hdr).texture;
+  scene.environment = env;
+  hdr.dispose(); pmremGen.dispose();
+}
+setHDRI('assets/hdr/moonless_golf_1k.hdr').catch(()=> console.warn('Sin HDRI'));
+
+/** ========= LUCES ========= */
+const hemiLight = new THREE.HemisphereLight(0x8fb2ff, 0x0a0c10, 0.35);
+scene.add(hemiLight);
+
+// Luz direccional principal
+const mainLight = new THREE.DirectionalLight(0xcfe2ff, 1.25);
+mainLight.castShadow = true;
+mainLight.shadow.mapSize.set(2048, 2048);
+mainLight.shadow.camera.near = 0.5;
+mainLight.shadow.camera.far = 1000;
+mainLight.position.set(50, 100, 50);
+scene.add(mainLight);
+
+/** ========= CIELO / ESTRELLAS en bgScene ========= */
+const skyGeo = new THREE.SphereGeometry(2000, 48, 24);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  depthWrite: false,
+  depthTest: false,
+  fog: false,
+  uniforms: {
+    topColor:    { value: new THREE.Color(0x0a1f35) },
+    bottomColor: { value: new THREE.Color(0x050910) }
+  },
+  vertexShader: /* glsl */`
+    varying vec3 vDir;
+    void main(){
+      vDir = normalize(position);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */`
+    varying vec3 vDir;
+    uniform vec3 topColor;
+    uniform vec3 bottomColor;
+    void main(){
+      float t = smoothstep(-0.2, 0.8, vDir.y);
+      vec3 col = mix(bottomColor, topColor, t);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+});
+const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+skyMesh.renderOrder = -2;
+skyMesh.frustumCulled = false;
+bgScene.add(skyMesh);
+
+// Estrellas
+const starCount = 3500;
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const r = 1400 + Math.random() * 400;
+  const a = Math.random() * Math.PI * 2;
+  const b = Math.acos(2 * Math.random() - 1);
+  starPositions[i*3+0] = r * Math.sin(b) * Math.cos(a);
+  starPositions[i*3+1] = r * Math.cos(b);
+  starPositions[i*3+2] = r * Math.sin(b) * Math.sin(a);
+}
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const starMat = new THREE.PointsMaterial({
+  size: 2.2,
+  sizeAttenuation: false,
+  color: 0xffffff,
+  fog: false,
+  depthTest: false,
+  transparent: true,
+  opacity: 0.95
+});
+const starField = new THREE.Points(starGeo, starMat);
+starField.renderOrder = -1;
+starField.matrixAutoUpdate = false;
+starField.frustumCulled = false;
+bgScene.add(starField);
+
+/** ========= AUDIO ========= */
+const listener = new THREE.AudioListener();
+camera.add(listener);
+const audioLoader = new THREE.AudioLoader();
+
+let windBuffer = null;
+audioLoader.load('assets/audio/wind.mp3', (buf)=> windBuffer = buf);
+
+let windSfx = null;
+function startAmbientAudio(){
+  const ctx = listener.context;
+  if (ambientEl) {
+    try {
+      const srcNode = ctx.createMediaElementSource(ambientEl);
+      srcNode.connect(listener.getInput());
+      ambientEl.loop = true;
+      ambientEl.volume = 0.4;
+      ambientEl.play().catch(()=>{});
+    } catch {}
+  }
+  if (windBuffer && !windSfx) {
+    windSfx = new THREE.Audio(listener);
+    windSfx.setBuffer(windBuffer);
+    windSfx.setLoop(true);
+    windSfx.setVolume(0.28);
+    windSfx.play();
+  }
+}
+
+// -------------------------------------------------------------------
+// ---------- GENERACIÓN DEL LABERINTO ----------
+// -------------------------------------------------------------------
+function generateMaze(rows, cols, cellSize) {
+    // 1. Crear grid para algoritmo de laberinto
+    const grid = [];
+    for (let r = 0; r < rows; r++) {
+        grid[r] = [];
+        for (let c = 0; c < cols; c++) {
+            grid[r][c] = { 
+                r, c, 
+                visited: false, 
+                walls: [true, true, true, true] // [norte, este, sur, oeste]
             };
-            
-            rotationJoystick = {
-                active: false,
-                x: 0,
-                y: 0,
-                base: rotationBase,
-                handle: rotationHandle
-            };
-            
-            // Configurar eventos táctiles/ratón para joystick de movimiento
-            setupJoystickEvents(movementJoystick, 'movement');
-            
-            // Configurar eventos táctiles/ratón para joystick de rotación
-            setupJoystickEvents(rotationJoystick, 'rotation');
         }
+    }
+    
+    // 2. Algoritmo de laberinto (Depth-First Search)
+    const stack = [];
+    let current = grid[0][0];
+    current.visited = true;
+    
+    // Función para obtener vecinos no visitados
+    function getNeighbors(cell) {
+        const n = [];
+        const { r, c } = cell;
         
-        // Configurar eventos para un joystick
-        function setupJoystickEvents(joystick, type) {
-            const baseRect = joystick.base.getBoundingClientRect();
-            const centerX = baseRect.left + baseRect.width / 2;
-            const centerY = baseRect.top + baseRect.height / 2;
-            const maxDistance = baseRect.width / 2 - joystick.handle.offsetWidth / 2;
+        if (r > 0 && !grid[r - 1][c].visited) n.push(grid[r - 1][c]); // Norte
+        if (c < cols - 1 && !grid[r][c + 1].visited) n.push(grid[r][c + 1]); // Este
+        if (r < rows - 1 && !grid[r + 1][c].visited) n.push(grid[r + 1][c]); // Sur
+        if (c > 0 && !grid[r][c - 1].visited) n.push(grid[r][c - 1]); // Oeste
+        
+        return n;
+    }
+    
+    // Generar laberinto
+    while (true) {
+        const neighbors = getNeighbors(current);
+        
+        if (neighbors.length > 0) {
+            const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+            stack.push(current);
             
-            function updateJoystickPosition(clientX, clientY) {
-                const dx = clientX - centerX;
-                const dy = clientY - centerY;
-                const distance = Math.min(Math.sqrt(dx * dx + dy * dy), maxDistance);
-                
-                // Calcular ángulo y posición normalizada
-                const angle = Math.atan2(dy, dx);
-                joystick.x = Math.cos(angle) * (distance / maxDistance);
-                joystick.y = Math.sin(angle) * (distance / maxDistance);
-                
-                // Actualizar posición visual del handle
-                joystick.handle.style.transform = `translate(-50%, -50%) translate(${joystick.x * maxDistance}px, ${joystick.y * maxDistance}px)`;
-                
-                // Activar visualmente
-                joystick.handle.classList.add('active');
-                joystick.active = true;
+            // Eliminar pared entre celda actual y siguiente
+            const dr = next.r - current.r;
+            const dc = next.c - current.c;
+            
+            if (dr === -1) { // Norte
+                current.walls[0] = false;
+                next.walls[2] = false;
+            } else if (dc === 1) { // Este
+                current.walls[1] = false;
+                next.walls[3] = false;
+            } else if (dr === 1) { // Sur
+                current.walls[2] = false;
+                next.walls[0] = false;
+            } else if (dc === -1) { // Oeste
+                current.walls[3] = false;
+                next.walls[1] = false;
             }
             
-            function resetJoystick() {
-                joystick.x = 0;
-                joystick.y = 0;
-                joystick.active = false;
-                joystick.handle.style.transform = 'translate(-50%, -50%)';
-                joystick.handle.classList.remove('active');
-            }
-            
-            // Eventos para ratón
-            joystick.base.addEventListener('mousedown', function(e) {
-                updateJoystickPosition(e.clientX, e.clientY);
-                
-                const mouseMoveHandler = function(e) {
-                    updateJoystickPosition(e.clientX, e.clientY);
-                };
-                
-                const mouseUpHandler = function() {
-                    document.removeEventListener('mousemove', mouseMoveHandler);
-                    document.removeEventListener('mouseup', mouseUpHandler);
-                    resetJoystick();
-                };
-                
-                document.addEventListener('mousemove', mouseMoveHandler);
-                document.addEventListener('mouseup', mouseUpHandler);
-            });
-            
-            // Eventos para pantalla táctil
-            joystick.base.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                if (e.touches.length > 0) {
-                    const touch = e.touches[0];
-                    updateJoystickPosition(touch.clientX, touch.clientY);
-                }
-            });
-            
-            joystick.base.addEventListener('touchmove', function(e) {
-                e.preventDefault();
-                if (e.touches.length > 0) {
-                    const touch = e.touches[0];
-                    updateJoystickPosition(touch.clientX, touch.clientY);
-                }
-            });
-            
-            joystick.base.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                resetJoystick();
-            });
-            
-            joystick.base.addEventListener('touchcancel', function(e) {
-                e.preventDefault();
-                resetJoystick();
-            });
+            current = next;
+            current.visited = true;
+        } else if (stack.length > 0) {
+            current = stack.pop();
+        } else {
+            break;
+        }
+    }
+    
+    // 3. Posición inicial del laberinto
+    const startX = -(cols * cellSize) / 2;
+    const startZ = -(rows * cellSize) / 2;
+    const wallHeightHalf = CONFIG.WALL_HEIGHT / 2;
+    
+    // 4. Geometría de las paredes
+    const wallGeo = new THREE.BoxGeometry(
+        cellSize + CONFIG.WALL_THICKNESS, 
+        CONFIG.WALL_HEIGHT, 
+        CONFIG.WALL_THICKNESS
+    );
+    
+    // 5. Cargar textura de paredes
+    const texLoader = new THREE.TextureLoader();
+    const wallMap = texLoader.load(CONFIG.WALL_TEX);
+    wallMap.wrapS = wallMap.wrapT = THREE.RepeatWrapping;
+    
+    const wallMaterial = new THREE.MeshStandardMaterial({
+        map: wallMap,
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    
+    // 6. Función para crear una pared individual
+    function createWall(posX, posZ, rotY) {
+        const wall = new THREE.Mesh(wallGeo, wallMaterial);
+        wall.position.set(posX, wallHeightHalf, posZ);
+        wall.rotation.y = rotY;
+        wall.receiveShadow = true;
+        wall.castShadow = true;
+        scene.add(wall);
+        
+        // Configurar repetición de textura
+        if (wall.material.map) {
+            wall.material.map.repeat.set(
+                1, 
+                CONFIG.WALL_HEIGHT / (CONFIG.WALL_THICKNESS * 2)
+            );
         }
         
-        // Configurar luces de la escena
-        function setupLights() {
-            // Luz ambiental
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
+        // Agregar a colisiones
+        wall.updateMatrixWorld();
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        physicsObjects.push({ 
+            mesh: wall, 
+            boundingBox: wallBox, 
+            static: true 
+        });
+    }
+    
+    // 7. Crear todas las paredes del laberinto
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const cell = grid[r][c];
+            const cx = startX + c * cellSize + cellSize / 2;
+            const cz = startZ + r * cellSize + cellSize / 2;
             
-            // Luz direccional (sol)
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(50, 100, 50);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.camera.left = -100;
-            directionalLight.shadow.camera.right = 100;
-            directionalLight.shadow.camera.top = 100;
-            directionalLight.shadow.camera.bottom = -100;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            scene.add(directionalLight);
+            // Crear paredes según las banderas
+            if (cell.walls[0]) createWall(cx, cz - cellSize / 2, 0); // Norte
+            if (cell.walls[1]) createWall(cx + cellSize / 2, cz, Math.PI / 2); // Este
+            if (cell.walls[2]) createWall(cx, cz + cellSize / 2, 0); // Sur
+            if (cell.walls[3]) createWall(cx - cellSize / 2, cz, Math.PI / 2); // Oeste
         }
+    }
+    
+    // 8. Guardar información del laberinto
+    scene.userData.maze = { 
+        grid, 
+        startX, 
+        startZ, 
+        rows, 
+        cols, 
+        cellSize 
+    };
+    
+    console.log(`Laberinto generado: ${rows}x${cols} celdas`);
+}
+
+// -------------------------------------------------------------------
+// ---------- CREACIÓN DE ENEMIGOS ----------
+// -------------------------------------------------------------------
+function spawnEnemiesInMaze(count) {
+    const maze = scene.userData.maze;
+    if (!maze) {
+        console.error("No hay laberinto generado");
+        return;
+    }
+    
+    const { startX, startZ, rows, cols, cellSize } = maze;
+    
+    // Geometría y material del enemigo
+    const enemyGeo = new THREE.BoxGeometry(15, 15, 15);
+    const enemyMat = new THREE.MeshStandardMaterial({ 
+        color: 0xdd4444, 
+        roughness: 0.8,
+        emissive: 0x220000,
+        emissiveIntensity: 0.1
+    });
+    
+    let placed = 0;
+    const maxAttempts = count * 10;
+    let attempts = 0;
+    
+    // Colocar enemigos en posiciones aleatorias del laberinto
+    while (placed < count && attempts < maxAttempts) {
+        attempts++;
         
-        // Crear el mundo virtual
-        function createWorld() {
-            // Crear suelo
-            const groundGeometry = new THREE.PlaneGeometry(100, 100);
-            const groundMaterial = new THREE.MeshLambertMaterial({ 
-                color: 0x3a7c3a,
-                side: THREE.DoubleSide
-            });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            // Crear objetos en el mundo
-            const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
-            const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
-            const cylinderGeometry = new THREE.CylinderGeometry(1, 1, 3, 32);
-            
-            const materials = [
-                new THREE.MeshLambertMaterial({ color: 0xff4444 }),
-                new THREE.MeshLambertMaterial({ color: 0x44ff44 }),
-                new THREE.MeshLambertMaterial({ color: 0x4444ff }),
-                new THREE.MeshLambertMaterial({ color: 0xffff44 }),
-                new THREE.MeshLambertMaterial({ color: 0xff44ff }),
-                new THREE.MeshLambertMaterial({ color: 0x44ffff })
-            ];
-            
-            // Crear varios objetos distribuidos en el mundo
-            for (let i = 0; i < 20; i++) {
-                let mesh;
-                const material = materials[Math.floor(Math.random() * materials.length)];
-                
-                switch (i % 3) {
-                    case 0:
-                        mesh = new THREE.Mesh(cubeGeometry, material);
-                        break;
-                    case 1:
-                        mesh = new THREE.Mesh(sphereGeometry, material);
-                        break;
-                    case 2:
-                        mesh = new THREE.Mesh(cylinderGeometry, material);
-                        break;
-                }
-                
-                mesh.position.x = (Math.random() - 0.5) * 80;
-                mesh.position.z = (Math.random() - 0.5) * 80;
-                mesh.position.y = mesh.geometry.type === 'SphereGeometry' ? 1 : mesh.geometry.parameters.height / 2;
-                
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                
-                scene.add(mesh);
-                objects.push(mesh);
-            }
-            
-            // Crear árboles
-            const treeTrunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 8);
-            const treeTopGeometry = new THREE.ConeGeometry(2, 4, 8);
-            
-            for (let i = 0; i < 15; i++) {
-                const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-                const trunk = new THREE.Mesh(treeTrunkGeometry, trunkMaterial);
-                
-                const topMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
-                const top = new THREE.Mesh(treeTopGeometry, topMaterial);
-                top.position.y = 2.5;
-                
-                const tree = new THREE.Group();
-                tree.add(trunk);
-                tree.add(top);
-                
-                tree.position.x = (Math.random() - 0.5) * 90;
-                tree.position.z = (Math.random() - 0.5) * 90;
-                tree.position.y = 1.5;
-                
-                trunk.castShadow = true;
-                trunk.receiveShadow = true;
-                top.castShadow = true;
-                top.receiveShadow = true;
-                
-                scene.add(tree);
-                objects.push(tree);
+        // Escoger celda aleatoria (evitar bordes)
+        const r = 1 + Math.floor(Math.random() * (rows - 2));
+        const c = 1 + Math.floor(Math.random() * (cols - 2));
+        
+        const x = startX + c * cellSize + cellSize / 2;
+        const z = startZ + r * cellSize + cellSize / 2;
+        
+        // No colocar cerca del inicio
+        const startCellX = startX + cellSize / 2;
+        const startCellZ = startZ + cellSize / 2;
+        const distanceToStart = Math.hypot(x - startCellX, z - startCellZ);
+        
+        if (distanceToStart < cellSize * 2) continue;
+        
+        // Verificar que no haya otro enemigo muy cerca
+        let tooClose = false;
+        for (const enemy of enemies) {
+            if (enemy.position.distanceTo(new THREE.Vector3(x, 7.5, z)) < cellSize) {
+                tooClose = true;
+                break;
             }
         }
         
-        // Configurar eventos
-        function setupEventListeners() {
-            const canvas = document.getElementById('renderer');
-            
-            // Bloquear/desbloquear puntero al hacer clic
-            canvas.addEventListener('click', function() {
-                if (!isLocked) {
-                    canvas.requestPointerLock();
-                    updateStatus("Controles activados. Usa los joysticks o teclas WASD para moverte.");
-                }
-            });
-            
-            // Eventos de bloqueo/desbloqueo de puntero
-            document.addEventListener('pointerlockchange', pointerLockChange);
-            document.addEventListener('mozpointerlockchange', pointerLockChange);
-            
-            // Eventos de teclado para movimiento adicional
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            
-            // Redimensionar ventana
-            window.addEventListener('resize', onWindowResize);
-        }
+        if (tooClose) continue;
         
-        // Manejar cambio de bloqueo de puntero
-        function pointerLockChange() {
-            isLocked = document.pointerLockElement === renderer.domElement ||
-                      document.mozPointerLockElement === renderer.domElement;
-            
-            if (isLocked) {
-                updateStatus("Controles activados. Usa los joysticks o teclas WASD para moverte.");
-            } else {
-                updateStatus("Controles desactivados. Haz clic en la pantalla para activar.");
-            }
-        }
+        // Crear enemigo
+        const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+        enemy.position.set(x, 7.5, z);
+        enemy.castShadow = true;
+        enemy.receiveShadow = true;
         
-        // Manejar teclas presionadas
-        function onKeyDown(event) {
-            switch (event.code) {
-                case 'KeyW':
-                    moveForward = true;
-                    break;
-                case 'KeyS':
-                    moveBackward = true;
-                    break;
-                case 'KeyA':
-                    moveLeft = true;
-                    break;
-                case 'KeyD':
-                    moveRight = true;
-                    break;
-                case 'Space':
-                    if (canJump) {
-                        velocity.y = 10;
-                        canJump = false;
-                    }
-                    break;
-            }
-        }
+        // Datos del enemigo
+        enemy.userData = { 
+            health: CONFIG.ENEMY_HEALTH, 
+            alive: true, 
+            speed: CONFIG.ENEMY_SPEED_MIN + Math.random() * (CONFIG.ENEMY_SPEED_MAX - CONFIG.ENEMY_SPEED_MIN),
+            lastAttack: 0
+        };
         
-        // Manejar teclas liberadas
-        function onKeyUp(event) {
-            switch (event.code) {
-                case 'KeyW':
-                    moveForward = false;
-                    break;
-                case 'KeyS':
-                    moveBackward = false;
-                    break;
-                case 'KeyA':
-                    moveLeft = false;
-                    break;
-                case 'KeyD':
-                    moveRight = false;
-                    break;
-            }
-        }
+        scene.add(enemy);
         
-        // Redimensionar ventana
-        function onWindowResize() {
-            const container = document.getElementById('scene-container');
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        }
+        // Agregar a colisiones
+        enemy.updateMatrixWorld();
+        const enemyBox = new THREE.Box3().setFromObject(enemy);
         
-        // Actualizar estado en la interfaz
-        function updateStatus(message) {
-            document.getElementById('status').textContent = `Estado: ${message}`;
-        }
+        enemies.push(enemy);
+        physicsObjects.push({ 
+            mesh: enemy, 
+            boundingBox: enemyBox, 
+            mass: 50 
+        });
         
-        // Animar la escena
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            const time = performance.now();
-            const delta = (time - prevTime) / 1000;
-            
-            // Actualizar movimiento según joysticks y teclas
-            direction.z = 0;
-            direction.x = 0;
-            
-            // Movimiento basado en joystick de movimiento
-            if (movementJoystick.active) {
-                direction.z = -movementJoystick.y * 20.0 * delta;
-                direction.x = -movementJoystick.x * 20.0 * delta;
-            }
-            
-            // Movimiento basado en teclas (compatibilidad)
-            if (moveForward) direction.z -= 20.0 * delta;
-            if (moveBackward) direction.z += 20.0 * delta;
-            if (moveLeft) direction.x -= 20.0 * delta;
-            if (moveRight) direction.x += 20.0 * delta;
-            
-            // Rotación basada en joystick de rotación
-            if (rotationJoystick.active && isLocked) {
-                controls.getObject().rotation.y -= rotationJoystick.x * 0.05;
-                camera.rotation.x = THREE.MathUtils.clamp(
-                    camera.rotation.x - rotationJoystick.y * 0.02, 
-                    -Math.PI/2, 
-                    Math.PI/2
-                );
-            }
-            
-            // Aplicar movimiento si hay dirección
-            if (direction.length() > 0) {
-                direction.normalize();
-                
-                // Mover hacia adelante/atrás
-                if (direction.z !== 0) {
-                    velocity.z = direction.z * 400.0 * delta;
-                }
-                
-                // Mover lateralmente
-                if (direction.x !== 0) {
-                    velocity.x = direction.x * 400.0 * delta;
-                }
-                
-                // Aplicar velocidad al controlador
-                controls.moveRight(velocity.x * delta);
-                controls.moveForward(velocity.z * delta);
-                
-                // Reducir velocidad gradualmente
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-            }
-            
-            // Aplicar gravedad
-            velocity.y -= 9.8 * 100.0 * delta;
-            
-            // Verificar colisión con el suelo (simplificado)
-            const cameraHeight = controls.getObject().position.y;
-            if (cameraHeight <= 1.6) {
-                velocity.y = 0;
-                controls.getObject().position.y = 1.6;
-                canJump = true;
-            }
-            
-            // Mover en eje Y
-            controls.getObject().position.y += velocity.y * delta;
-            
-            prevTime = time;
-            
-            // Renderizar escena
-            renderer.render(scene, camera);
-        }
+        placed++;
+    }
+    
+    console.log(`${placed} enemigos colocados en el laberinto`);
+}
+
+// -------------------------------------------------------------------
+// ---------- CREACIÓN DEL PORTAL (OBJETIVO) ----------
+// -------------------------------------------------------------------
+function createGoalAtEnd() {
+    const maze = scene.userData.maze;
+    if (!maze) return;
+    
+    const { startX, startZ, rows, cols, cellSize } = maze;
+    
+    // Posición del portal (esquina opuesta al inicio)
+    const goalX = startX + (cols - 1) * cellSize + cellSize / 2;
+    const goalZ = startZ + (rows - 1) * cellSize + cellSize / 2;
+    
+    // Geometría del portal (toro animado)
+    const portalGeo = new THREE.TorusGeometry(30, 6, 16, 100);
+    const portalMat = new THREE.MeshStandardMaterial({ 
+        color: 0x22ff88, 
+        emissive: 0x22ff88, 
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.9
+    });
+    
+    const portal = new THREE.Mesh(portalGeo, portalMat);
+    portal.rotation.x = Math.PI / 2;
+    portal.position.set(goalX, 45, goalZ);
+    portal.castShadow = true;
+    scene.add(portal);
+    
+    // Efecto de partículas alrededor del portal
+    createPortalParticles(goalX, goalZ);
+    
+    // Guardar referencia
+    scene.userData.goal = { 
+        mesh: portal, 
+        position: new THREE.Vector3(goalX, 0, goalZ),
+        radius: 30
+    };
+    
+    console.log(`Portal creado en posición: (${goalX.toFixed(1)}, ${goalZ.toFixed(1)})`);
+}
+
+// -------------------------------------------------------------------
+// ---------- EFECTO DE PARTÍCULAS DEL PORTAL ----------
+// -------------------------------------------------------------------
+function createPortalParticles(x, z) {
+    const particleCount = 100;
+    const particleGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    
+    for (let i = 0; i < particleCount; i++) {
+        const radius = 25 + Math.random() * 10;
+        const angle = Math.random() * Math.PI * 2;
+        const height = 20 + Math.random() * 50;
         
-        // Inicializar cuando el DOM esté listo
-        document.addEventListener('DOMContentLoaded', init);
+        positions[i * 3] = x + Math.cos(angle) * radius;
+        positions[i * 3 + 1] = height;
+        positions[i * 3 + 2] = z + Math.sin(angle) * radius;
+        
+        // Color verde para partículas
+        colors[i * 3] = 0.2 + Math.random() * 0.3;     // R
+        colors[i * 3 + 1] = 0.8 + Math.random() * 0.2; // G
+        colors[i * 3 + 2] = 0.3 + Math.random() * 0.2; // B
+    }
+    
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    
+    const particleMat = new THREE.PointsMaterial({
+        size: 2,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.7
+    });
+    
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+    
+    // Guardar para animación
+    scene.userData.portalParticles = {
+        mesh: particles,
+        time: 0,
+        positions: positions
+    };
+}
+
+// -------------------------------------------------------------------
+// ---------- CREACIÓN DEL PISO ----------
+// -------------------------------------------------------------------
+function createFloor() {
+    const maze = scene.userData.maze;
+    if (!maze) return;
+    
+    const { rows, cols, cellSize } = maze;
+    
+    // Calcular tamaño del piso (más grande que el laberinto)
+    const floorWidth = cols * cellSize + cellSize * 2;
+    const floorHeight = rows * cellSize + cellSize * 2;
+    
+    // Cargar textura del piso
+    const texLoader = new THREE.TextureLoader();
+    const floorMap = texLoader.load(CONFIG.FLOOR_TEX);
+    floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
+    floorMap.repeat.set(rows * 0.5, cols * 0.5);
+    
+    const floorMat = new THREE.MeshStandardMaterial({ 
+        map: floorMap, 
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    
+    const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(floorWidth, floorHeight),
+        floorMat
+    );
+    
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.1;
+    floor.receiveShadow = true;
+    scene.add(floor);
+    
+    console.log(`Piso creado: ${floorWidth}x${floorHeight}`);
+}
+
+// -------------------------------------------------------------------
+// ---------- INICIALIZACIÓN COMPLETA DEL ESCENARIO ----------
+// -------------------------------------------------------------------
+function createGameScene() {
+    // 1. Generar laberinto
+    generateMaze(CONFIG.MAZE_ROWS, CONFIG.MAZE_COLS, CONFIG.CELL_SIZE);
+    
+    // 2. Crear piso
+    createFloor();
+    
+    // 3. Colocar enemigos
+    spawnEnemiesInMaze(CONFIG.ENEMY_COUNT);
+    
+    // 4. Crear portal objetivo
+    createGoalAtEnd();
+    
+    // 5. Posicionar al jugador en el inicio
+    const maze = scene.userData.maze;
+    if (maze) {
+        const startPos = new THREE.Vector3(
+            maze.startX + CONFIG.CELL_SIZE / 2,
+            10,
+            maze.startZ + CONFIG.CELL_SIZE / 2
+        );
+        
+        player.position.copy(startPos);
+        return startPos;
+    }
+    
+    const defaultStart = new THREE.Vector3(0, 10, 0);
+    player.position.copy(defaultStart);
+    return defaultStart;
+}
+
+// -------------------------------------------------------------------
+// ---------- ANIMACIÓN DE PARTÍCULAS DEL PORTAL ----------
+// -------------------------------------------------------------------
+function animatePortalParticles(deltaTime) {
+    const portalParticles = scene.userData.portalParticles;
+    if (!portalParticles) return;
+    
+    portalParticles.time += deltaTime;
+    const positions = portalParticles.positions;
+    const portalPos = scene.userData.goal.position;
+    
+    for (let i = 0; i < positions.length / 3; i++) {
+        const idx = i * 3;
+        const radius = 25 + Math.random() * 10;
+        const angle = (portalParticles.time * 0.5 + i * 0.1) % (Math.PI * 2);
+        const height = 20 + Math.sin(portalParticles.time + i) * 10;
+        
+        positions[idx] = portalPos.x + Math.cos(angle) * radius;
+        positions[idx + 1] = height;
+        positions[idx + 2] = portalPos.z + Math.sin(angle) * radius;
+    }
+    
+    portalParticles.mesh.geometry.attributes.position.needsUpdate = true;
+    portalParticles.mesh.rotation.y += deltaTime * 0.2;
+    
+    // Animar portal también
+    if (scene.userData.goal) {
+        scene.userData.goal.mesh.rotation.y += deltaTime * 0.5;
+    }
+}
+
+/** ========= VR: CONTROLADORES + TELEPORT ========= */
+const vrBtn = VRButton.createButton(renderer);
+vrBtn.classList.add('vr-button');
+document.body.appendChild(vrBtn);
+
+const controllerLeft = renderer.xr.getController(0);
+const controllerRight = renderer.xr.getController(1);
+scene.add(controllerLeft, controllerRight);
+
+const controllerModelFactory = new XRControllerModelFactory();
+const grip0 = renderer.xr.getControllerGrip(0);
+grip0.add(controllerModelFactory.createControllerModel(grip0)); scene.add(grip0);
+const grip1 = renderer.xr.getControllerGrip(1);
+grip1.add(controllerModelFactory.createControllerModel(grip1)); scene.add(grip1);
+
+// Arco + marcador para teleport
+const arcMatOK  = new THREE.LineBasicMaterial({ color: 0x7ad1ff, transparent:true, opacity:0.95 });
+const arcMatBAD = new THREE.LineBasicMaterial({ color: 0xff5a5a, transparent:true, opacity:0.95 });
+let arcMaterial = arcMatOK;
+const arcGeo = new THREE.BufferGeometry().setFromPoints(new Array(CONFIG.ARC_STEPS).fill(0).map(()=>new THREE.Vector3()));
+const arcLine = new THREE.Line(arcGeo, arcMaterial); arcLine.visible=false; scene.add(arcLine);
+const marker = new THREE.Mesh(new THREE.RingGeometry(0.25,0.30,32), new THREE.MeshBasicMaterial({ color:0x7ad1ff, transparent:true, opacity:0.9, side:THREE.DoubleSide }));
+marker.rotation.x = -Math.PI/2; marker.visible=false; scene.add(marker);
+
+let teleportValid = false;
+const teleportPoint = new THREE.Vector3();
+
+controllerRight.addEventListener('selectstart', ()=>{ arcLine.visible=true; marker.visible=true; });
+controllerRight.addEventListener('selectend', ()=>{
+  arcLine.visible=false; marker.visible=false;
+  if (teleportValid){
+    // Verificar que la posición de teleport esté en el suelo del laberinto
+    const floorY = -0.1 + 1.6; // Altura del piso + altura del jugador
+    player.position.set(teleportPoint.x, floorY, teleportPoint.z);
+    
+    // Verificar colisiones después del teleport
+    player.position.copy(resolveCollisions(player.position, player.position));
+  }
+});
+
+// Audio ambiente al entrar a VR
+renderer.xr.addEventListener('sessionstart', async ()=>{
+  try { if (ambientEl) { ambientEl.volume = 0.4; await ambientEl.play(); } } catch(e){ console.warn('Audio bosque bloqueado:', e); }
+  startAmbientAudio();
+});
+
+/** ========= LOCOMOCIÓN (stick) ========= */
+function vrGamepadMove(dt){
+  const session = renderer.xr.getSession(); if (!session) return;
+  for (const src of session.inputSources){
+    if (!src.gamepad) continue;
+    let [x,y] = [src.gamepad.axes[2], src.gamepad.axes[3]];
+    if (x===undefined || y===undefined){ x = src.gamepad.axes[0] ?? 0; y = src.gamepad.axes[1] ?? 0; }
+    const dead=0.12; if (Math.abs(x)<dead) x=0; if (Math.abs(y)<dead) y=0; if (x===0 && y===0) continue;
+
+    const forward = new THREE.Vector3(); camera.getWorldDirection(forward); forward.y=0; forward.normalize();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
+
+    let next = player.position.clone();
+    next.addScaledVector(forward, -y * CONFIG.VR_WALK_SPEED * dt);
+    next.addScaledVector(right,    x * CONFIG.VR_STRAFE_SPEED * dt);
+
+    // Restringir movimiento dentro de los límites del laberinto
+    const maze = scene.userData.maze;
+    if (maze) {
+      const halfWidth = (maze.cols * CONFIG.CELL_SIZE) / 2 - 5;
+      const halfHeight = (maze.rows * CONFIG.CELL_SIZE) / 2 - 5;
+      next.x = Math.max(-halfWidth, Math.min(halfWidth, next.x));
+      next.z = Math.max(-halfHeight, Math.min(halfHeight, next.z));
+    }
+
+    next.y = -0.1 + 1.6; // Mantener en el suelo
+    next = resolveCollisions(player.position, next);
+    player.position.copy(next);
+  }
+}
+
+/** ========= TELEPORT ========= */
+const arcPointsBuf = new Float32Array(CONFIG.ARC_STEPS*3);
+function updateTeleportArc(){
+  if (!arcLine.visible) return;
+  teleportValid = false;
+
+  const origin = new THREE.Vector3().setFromMatrixPosition(controllerRight.matrixWorld);
+  const dir = new THREE.Vector3(0,0,-1).applyQuaternion(controllerRight.quaternion).normalize();
+
+  const pts = [];
+  let hit = null;
+  const v0 = dir.clone().multiplyScalar(CONFIG.ARC_SPEED);
+  const g = new THREE.Vector3(0,-CONFIG.ARC_GRAVITY,0);
+  let p = origin.clone(), v = v0.clone();
+
+  for (let i=0;i<CONFIG.ARC_STEPS;i++){
+    pts.push(p.clone());
+    v.addScaledVector(g, 1/60);
+    const np = p.clone().addScaledVector(v, 1/60);
+    
+    // Verificar colisión con el piso
+    if (np.y <= -0.1) {
+      hit = { point: new THREE.Vector3(np.x, -0.1, np.z), faceNormal: new THREE.Vector3(0,1,0) };
+      break;
+    }
+    p.copy(np);
+  }
+
+  for (let i=0;i<CONFIG.ARC_STEPS;i++){
+    const P = pts[Math.min(i, pts.length-1)];
+    arcPointsBuf[i*3+0]=P.x; arcPointsBuf[i*3+1]=P.y; arcPointsBuf[i*3+2]=P.z;
+  }
+  arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPointsBuf,3));
+  arcGeo.attributes.position.needsUpdate = true;
+
+  if (hit){
+    // Verificar que el punto esté dentro del laberinto
+    const maze = scene.userData.maze;
+    let inside = true;
+    if (maze) {
+      const halfWidth = (maze.cols * CONFIG.CELL_SIZE) / 2 - 2;
+      const halfHeight = (maze.rows * CONFIG.CELL_SIZE) / 2 - 2;
+      inside = Math.abs(hit.point.x) <= halfWidth && Math.abs(hit.point.z) <= halfHeight;
+    }
+    
+    teleportValid = inside;
+
+    arcLine.material = teleportValid ? arcMatOK : arcMatBAD;
+    marker.material.color.set(teleportValid ? 0x7ad1ff : 0xff5a5a);
+
+    marker.position.set(hit.point.x, -0.1 + 0.02, hit.point.z);
+    teleportPoint.copy(hit.point);
+  }
+}
+
+/** ========= COLISIONES ========= */
+function resolveCollisions(curr, next){
+  // Paredes del laberinto
+  for (const obj of physicsObjects) {
+    if (!obj.static) continue;
+    
+    const box = obj.boundingBox.clone();
+    const playerBox = new THREE.Box3(
+      new THREE.Vector3(next.x - CONFIG.PLAYER_RADIUS, next.y - 1.6, next.z - CONFIG.PLAYER_RADIUS),
+      new THREE.Vector3(next.x + CONFIG.PLAYER_RADIUS, next.y, next.z + CONFIG.PLAYER_RADIUS)
+    );
+    
+    if (box.intersectsBox(playerBox)) {
+      // Resolver colisión empujando al jugador
+      const dx = next.x - obj.mesh.position.x;
+      const dz = next.z - obj.mesh.position.z;
+      const dist = Math.hypot(dx, dz);
+      const minDist = CONFIG.PLAYER_RADIUS + CONFIG.WALL_THICKNESS/2;
+      
+      if (dist < minDist && dist > 0) {
+        const push = (minDist - dist) + 0.1;
+        const nx = dx / dist;
+        const nz = dz / dist;
+        next.x += nx * push;
+        next.z += nz * push;
+      }
+    }
+  }
+  
+  // Enemigos
+  for (const enemy of enemies) {
+    if (!enemy.userData.alive) continue;
+    
+    const dx = next.x - enemy.position.x;
+    const dz = next.z - enemy.position.z;
+    const dist = Math.hypot(dx, dz);
+    const minDist = CONFIG.PLAYER_RADIUS + 7.5; // Radio del enemigo
+    
+    if (dist < minDist) {
+      // Empujar al jugador lejos del enemigo
+      const push = (minDist - dist) + 0.1;
+      const nx = dx / (dist || 1);
+      const nz = dz / (dist || 1);
+      next.x += nx * push;
+      next.z += nz * push;
+      
+      // Daño al jugador (simulado - podrías agregar sistema de salud)
+      console.log("¡Colisión con enemigo!");
+    }
+  }
+  
+  return next;
+}
+
+/** ========= LOOP ========= */
+const clock = new THREE.Clock();
+
+// Inicializar el juego
+createGameScene();
+
+renderer.setAnimationLoop(()=>{
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (renderer.xr.isPresenting){
+    vrGamepadMove(dt);
+    updateTeleportArc();
+  }
+
+  // Mantener el fondo centrado en el jugador
+  const p = player.position;
+  skyMesh.position.copy(p);
+  starField.position.copy(p);
+
+  // Animar partículas del portal
+  animatePortalParticles(dt);
+
+  // Render: primero fondo, luego mundo
+  renderer.clear();
+  bgCam.projectionMatrix.copy(camera.projectionMatrix);
+  bgCam.matrixWorld.copy(camera.matrixWorld);
+  bgCam.matrixWorldInverse.copy(camera.matrixWorldInverse);
+  renderer.render(bgScene, bgCam);
+  renderer.render(scene, camera);
+});
+
+/** ========= RESIZE ========= */
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  bgCam.aspect = innerWidth / innerHeight;
+  bgCam.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
     </script>
 </body>
 </html>
