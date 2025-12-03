@@ -345,36 +345,71 @@
     // -------------------------------------------------------------------
 
     function initVR() {
-        // Habilitar WebXR
-        renderer.xr.enabled = true;
-        
-        // Crear botón VR
-        vrButton = VRButton.createButton(renderer);
-        vrButton.classList.add('vr-button');
-        document.body.appendChild(vrButton);
-        
-        // Crear controladores
-        controllerLeft = renderer.xr.getController(0);
-        controllerRight = renderer.xr.getController(1);
-        scene.add(controllerLeft, controllerRight);
-        
-        // Modelos de controladores
-        controllerModelFactory = new XRControllerModelFactory();
-        const grip0 = renderer.xr.getControllerGrip(0);
-        const grip1 = renderer.xr.getControllerGrip(1);
-        grip0.add(controllerModelFactory.createControllerModel(grip0));
-        grip1.add(controllerModelFactory.createControllerModel(grip1));
-        scene.add(grip0, grip1);
-        
-        // Crear sistema de teleportación
-        createTeleportSystem();
-        // Configurar eventos de disparo VR
-        setupVRShootEvents();  // <-- AÑADE ESTA LÍNEA
-        
-        // Eventos de VR
-        renderer.xr.addEventListener('sessionstart', onVRSessionStart);
-        renderer.xr.addEventListener('sessionend', onVRSessionEnd);
+    // Habilitar WebXR
+    renderer.xr.enabled = true;
+    
+    // Verificar si WebXR está disponible
+    if (!navigator.xr) {
+        console.warn("WebXR no está disponible en este navegador");
+        return;
     }
+    
+    // Crear botón VR
+    vrButton = VRButton.createButton(renderer);
+    vrButton.classList.add('vr-button');
+    document.body.appendChild(vrButton);
+    
+    // Crear controladores
+    controllerLeft = renderer.xr.getController(0);
+    controllerRight = renderer.xr.getController(1);
+    scene.add(controllerLeft, controllerRight);
+    
+    // Añadir ayuda visual para los controladores
+    const controllerGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.2);
+    const controllerMaterial = new THREE.MeshBasicMaterial({ color: 0x4444ff });
+    const leftController = new THREE.Mesh(controllerGeometry, controllerMaterial);
+    const rightController = new THREE.Mesh(controllerGeometry, controllerMaterial);
+    leftController.position.z = -0.1;
+    rightController.position.z = -0.1;
+    controllerLeft.add(leftController);
+    controllerRight.add(rightController);
+    
+    // Modelos de controladores (opcional)
+    controllerModelFactory = new XRControllerModelFactory();
+    const grip0 = renderer.xr.getControllerGrip(0);
+    const grip1 = renderer.xr.getControllerGrip(1);
+    grip0.add(controllerModelFactory.createControllerModel(grip0));
+    grip1.add(controllerModelFactory.createControllerModel(grip1));
+    scene.add(grip0, grip1);
+    
+    // Crear sistema de teleportación
+    createTeleportSystem();
+    
+    // Configurar eventos de disparo VR
+    setupVRShootEvents();
+    
+    // Eventos de VR
+    renderer.xr.addEventListener('sessionstart', onVRSessionStart);
+    renderer.xr.addEventListener('sessionend', onVRSessionEnd);
+    
+    console.log("VR inicializado correctamente");
+
+    // Indicador visual de movimiento (solo para depuración)
+    const moveIndicator = document.createElement('div');
+    moveIndicator.style.cssText = `
+        position: absolute;
+        bottom: 60px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        color: #0f0;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        z-index: 1000;
+    `;
+    moveIndicator.innerHTML = 'VR Mov: (0, 0)';
+    document.body.appendChild(moveIndicator);
+}
 
     function createTeleportSystem() {
         // Materiales para el arco de teleportación
@@ -502,47 +537,83 @@
     }
 
     function vrGamepadMove(dt) {
-        if (!vrActive) return;
+    if (!vrActive || !renderer.xr.isPresenting) return;
+    
+    const session = renderer.xr.getSession();
+    if (!session) return;
+    
+    let totalMove = new THREE.Vector3();
+    
+    for (const src of session.inputSources) {
+        if (!src.gamepad) continue;
         
-        const session = renderer.xr.getSession();
-        if (!session) return;
+        // En Quest 3, los joysticks están en axes[0]/axes[1] y axes[2]/axes[3]
+        // Joystick izquierdo: axes[0] (horizontal), axes[1] (vertical)
+        // Joystick derecho: axes[2] (horizontal), axes[3] (vertical)
+        let x = 0;
+        let y = 0;
         
-        for (const src of session.inputSources) {
-            if (!src.gamepad) continue;
-            
-            // Obtener ejes del joystick
-            let x = src.gamepad.axes[2] || src.gamepad.axes[0] || 0;
-            let y = src.gamepad.axes[3] || src.gamepad.axes[1] || 0;
-            
-            // Zona muerta
-            const dead = 0.12;
-            if (Math.abs(x) < dead) x = 0;
-            if (Math.abs(y) < dead) y = 0;
-            if (x === 0 && y === 0) continue;
-            
-            // Calcular dirección de movimiento
-            const forward = new THREE.Vector3();
-            camera.getWorldDirection(forward);
-            forward.y = 0;
-            forward.normalize();
-            
-            const right = new THREE.Vector3()
-                .crossVectors(upVector, forward)
-                .normalize();
-            
-            // Aplicar movimiento
-            const moveDelta = new THREE.Vector3();
-            moveDelta.addScaledVector(forward, -y * CONFIG.VR_WALK_SPEED * dt);
-            moveDelta.addScaledVector(right, x * CONFIG.VR_STRAFE_SPEED * dt);
-            
-            // Aplicar movimiento al jugador (usando la misma lógica de colisiones)
-            const playerObject = controls.getObject();
-            playerObject.position.add(moveDelta);
-            
-            // También actualizar la posición de la cámara
+        // Usar joystick izquierdo para movimiento (axes[0] y axes[1])
+        if (src.gamepad.axes && src.gamepad.axes.length >= 2) {
+            x = src.gamepad.axes[0] || 0;  // Horizontal izquierdo
+            y = src.gamepad.axes[1] || 0;  // Vertical izquierdo (invertido)
+        }
+        
+        // Zona muerta
+        const deadzone = 0.15;
+        if (Math.abs(x) < deadzone) x = 0;
+        if (Math.abs(y) < deadzone) y = 0;
+        
+        if (x === 0 && y === 0) continue;
+        
+        // Calcular dirección relativa a la cámara
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+        
+        const right = new THREE.Vector3()
+            .crossVectors(upVector, forward)
+            .normalize();
+        
+        // Acumular movimiento
+        totalMove.addScaledVector(forward, -y * CONFIG.VR_WALK_SPEED * dt);
+        totalMove.addScaledVector(right, x * CONFIG.VR_STRAFE_SPEED * dt);
+    }
+    
+    // Solo aplicar movimiento si hay entrada
+    if (totalMove.lengthSq() > 0.001) {
+        const playerObject = controls.getObject();
+        
+        // Aplicar movimiento usando el sistema de colisiones existente
+        const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
+        playerCollider.setFromCenterAndSize(
+            playerObject.position,
+            new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
+        );
+        
+        // Verificar colisiones antes de mover
+        const futureCollider = playerCollider.clone().translate(new THREE.Vector3(totalMove.x, 0, totalMove.z));
+        let canMove = true;
+        
+        for (const obj of physicsObjects) {
+            if (futureCollider.intersectsBox(obj.boundingBox)) {
+                canMove = false;
+                break;
+            }
+        }
+        
+        if (canMove) {
+            playerObject.position.add(totalMove);
             camera.position.copy(playerObject.position);
         }
     }
+
+    // Para depuración
+    if (moveIndicator && (x !== 0 || y !== 0)) {
+        moveIndicator.innerHTML = `VR Mov: (${x.toFixed(2)}, ${y.toFixed(2)})`;
+    }
+}
 
     function onVRSessionStart() {
         vrActive = true;
@@ -1287,21 +1358,23 @@ function triggerHapticFeedback(hand, intensity, duration) {
 
     function animate() {
         requestAnimationFrame(animate);
-        
-        const dt = clock.getDelta();
     
-        // 1. Actualizar Lógica
-        if (playerLife > 0) {
+    const dt = clock.getDelta();
+    
+    // Actualizar estado VR
+    vrActive = renderer.xr.isPresenting;
+    
+    // 1. Actualizar Lógica
+    if (playerLife > 0) {
+        // Si está en VR, usar movimiento VR, sino usar teclado
+        if (vrActive) {
+            vrGamepadMove(dt);
+            updateTeleportArc();
+        } else {
             updatePlayerMovement(dt);
-            stepPhysics(dt);
-            
-            // Actualizar movimiento VR si está activo
-            if (vrActive) {
-                vrGamepadMove(dt);
-                updateTeleportArc();
-            }
         }
-        if (mixer) mixer.update(dt);
+        stepPhysics(dt);
+    }
     
         // 2. Sincronizar modelo 3D con la cámara FPS
         if (playerModel) {
