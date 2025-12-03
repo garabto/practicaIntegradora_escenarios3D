@@ -331,7 +331,7 @@ const CONFIG = {
     MAZE_COLS: 11,
     MAZE_ROWS: 11,
     CELL_SIZE: 80,
-    WALL_HEIGHT: 36,
+    WALL_HEIGHT: 20,
     WALL_THICKNESS: 8,
     
     // Enemigos
@@ -642,8 +642,9 @@ function initVR() {
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
 /** ========= GENERACIÓN DEL LABERINTO (con texturas - VERSIÓN CORREGIDA) ========= */
+/** ========= GENERACIÓN DEL LABERINTO (altura reducida) ========= */
 function generateMaze(rows, cols, cellSize) {
-    console.log(`Generando laberinto ${rows}x${cols} con texturas...`);
+    console.log(`Generando laberinto ${rows}x${cols} (altura: ${CONFIG.WALL_HEIGHT})...`);
     
     const grid = [];
     for (let r = 0; r < rows; r++) {
@@ -708,15 +709,15 @@ function generateMaze(rows, cols, cellSize) {
     
     const startX = -(cols * cellSize) / 2;
     const startZ = -(rows * cellSize) / 2;
-    const wallHeightHalf = CONFIG.WALL_HEIGHT / 2;
+    const wallHeightHalf = CONFIG.WALL_HEIGHT / 2; // Usar la nueva altura
     
     const wallGeo = new THREE.BoxGeometry(
         cellSize + CONFIG.WALL_THICKNESS, 
-        CONFIG.WALL_HEIGHT, 
+        CONFIG.WALL_HEIGHT, // Altura reducida
         CONFIG.WALL_THICKNESS
     );
     
-    // Cargar textura de paredes con fallback a color sólido
+    // Cargar textura de paredes
     const textureLoader = new THREE.TextureLoader();
     let wallMaterial;
     
@@ -725,16 +726,14 @@ function generateMaze(rows, cols, cellSize) {
             (texture) => {
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
-                // Calcular repetición basada en el tamaño de la pared
-                const repeatX = (cellSize + CONFIG.WALL_THICKNESS) / 50; // Ajustado
-                const repeatY = CONFIG.WALL_HEIGHT / 50; // Ajustado
+                const repeatX = (cellSize + CONFIG.WALL_THICKNESS) / 50;
+                const repeatY = CONFIG.WALL_HEIGHT / 50;
                 texture.repeat.set(repeatX, repeatY);
                 console.log("Textura de paredes cargada correctamente");
             },
             undefined,
             (error) => {
-                console.warn("Error al cargar textura de paredes, usando color sólido:", error);
-                // Fallback directo
+                console.warn("Error al cargar textura de paredes:", error);
                 wallMaterial = new THREE.MeshStandardMaterial({
                     color: 0x666666,
                     roughness: 0.8,
@@ -743,15 +742,13 @@ function generateMaze(rows, cols, cellSize) {
             }
         );
         
-        // Material con textura
         wallMaterial = new THREE.MeshStandardMaterial({
             map: wallTexture,
             roughness: 0.8,
             metalness: 0.2
         });
-        
     } catch (error) {
-        console.warn("Error al crear material de paredes, usando fallback:", error);
+        console.warn("Error al crear material:", error);
         wallMaterial = new THREE.MeshStandardMaterial({
             color: 0x666666,
             roughness: 0.8,
@@ -778,7 +775,7 @@ function generateMaze(rows, cols, cellSize) {
         return wall;
     }
     
-    // Generar paredes del laberinto
+    // Crear todas las paredes internas
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const cell = grid[r][c];
@@ -792,82 +789,9 @@ function generateMaze(rows, cols, cellSize) {
         }
     }
     
-    // Paredes externas para cerrar el laberinto
-    const outerWallGeo = new THREE.BoxGeometry(
-        CONFIG.WALL_THICKNESS, 
-        CONFIG.WALL_HEIGHT, 
-        CONFIG.WALL_THICKNESS
-    );
-    
-    // Pared norte completa
-    for (let c = 0; c < cols; c++) {
-        const cx = startX + c * cellSize + cellSize / 2;
-        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
-        wall.position.set(cx, wallHeightHalf, startZ - cellSize / 2);
-        wall.receiveShadow = true;
-        wall.castShadow = true;
-        scene.add(wall);
-        
-        const wallBox = new THREE.Box3().setFromObject(wall);
-        physicsObjects.push({ 
-            mesh: wall, 
-            boundingBox: wallBox, 
-            static: true 
-        });
-    }
-    
-    // Pared sur completa
-    for (let c = 0; c < cols; c++) {
-        const cx = startX + c * cellSize + cellSize / 2;
-        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
-        wall.position.set(cx, wallHeightHalf, startZ + rows * cellSize - cellSize / 2);
-        wall.receiveShadow = true;
-        wall.castShadow = true;
-        scene.add(wall);
-        
-        const wallBox = new THREE.Box3().setFromObject(wall);
-        physicsObjects.push({ 
-            mesh: wall, 
-            boundingBox: wallBox, 
-            static: true 
-        });
-    }
-    
-    // Pared oeste completa
-    for (let r = 0; r < rows; r++) {
-        const cz = startZ + r * cellSize + cellSize / 2;
-        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
-        wall.position.set(startX - cellSize / 2, wallHeightHalf, cz);
-        wall.rotation.y = Math.PI / 2;
-        wall.receiveShadow = true;
-        wall.castShadow = true;
-        scene.add(wall);
-        
-        const wallBox = new THREE.Box3().setFromObject(wall);
-        physicsObjects.push({ 
-            mesh: wall, 
-            boundingBox: wallBox, 
-            static: true 
-        });
-    }
-    
-    // Pared este completa
-    for (let r = 0; r < rows; r++) {
-        const cz = startZ + r * cellSize + cellSize / 2;
-        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
-        wall.position.set(startX + cols * cellSize - cellSize / 2, wallHeightHalf, cz);
-        wall.rotation.y = Math.PI / 2;
-        wall.receiveShadow = true;
-        wall.castShadow = true;
-        scene.add(wall);
-        
-        const wallBox = new THREE.Box3().setFromObject(wall);
-        physicsObjects.push({ 
-            mesh: wall, 
-            boundingBox: wallBox, 
-            static: true 
-        });
-    }
+    // Calcular y marcar el camino hacia el portal
+    const path = findPathToGoal(grid, rows, cols);
+    createPathMarkers(path, startX, startZ, cellSize);
     
     scene.userData.maze = { 
         grid, 
@@ -875,11 +799,182 @@ function generateMaze(rows, cols, cellSize) {
         startZ, 
         rows, 
         cols, 
-        cellSize 
+        cellSize,
+        path: path
     };
     
-    console.log(`Laberinto generado: ${rows}x${cols} celdas con texturas`);
-}// -------------------------------------------------------------------
+    console.log(`Laberinto generado: ${rows}x${cols} (altura: ${CONFIG.WALL_HEIGHT}) con marcadores de ruta`);
+    return grid;
+}
+
+/** ========= ENCONTRAR CAMINO AL PORTAL ========= */
+function findPathToGoal(grid, rows, cols) {
+    console.log("Calculando camino hacia el portal...");
+    
+    // El portal está en la esquina inferior derecha (última celda)
+    const startCell = grid[0][0]; // Celda inicial
+    const goalCell = grid[rows-1][cols-1]; // Celda del portal
+    
+    // Usar BFS para encontrar el camino
+    const queue = [{ cell: startCell, path: [startCell] }];
+    const visited = new Set();
+    visited.add(startCell);
+    
+    while (queue.length > 0) {
+        const { cell, path } = queue.shift();
+        
+        // Si llegamos al portal
+        if (cell === goalCell) {
+            console.log("Camino encontrado con", path.length, "celdas");
+            return path;
+        }
+        
+        // Obtener vecinos accesibles
+        const neighbors = [];
+        const { r, c, walls } = cell;
+        
+        // Norte (pared 0)
+        if (!walls[0] && r > 0) neighbors.push(grid[r-1][c]);
+        // Este (pared 1)
+        if (!walls[1] && c < cols-1) neighbors.push(grid[r][c+1]);
+        // Sur (pared 2)
+        if (!walls[2] && r < rows-1) neighbors.push(grid[r+1][c]);
+        // Oeste (pared 3)
+        if (!walls[3] && c > 0) neighbors.push(grid[r][c-1]);
+        
+        for (const neighbor of neighbors) {
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                queue.push({ 
+                    cell: neighbor, 
+                    path: [...path, neighbor] 
+                });
+            }
+        }
+    }
+    
+    console.log("No se encontró camino al portal");
+    return [];
+}
+
+/** ========= CREAR MARCADORES DE RUTA ========= */
+function createPathMarkers(path, startX, startZ, cellSize) {
+    if (path.length === 0) return;
+    
+    console.log("Creando marcadores de ruta...");
+    
+    const markerGeo = new THREE.CylinderGeometry(8, 8, 2, 16);
+    const markerMat = new THREE.MeshStandardMaterial({ 
+        color: 0x22ff88,
+        emissive: 0x22ff88,
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const arrowGeo = new THREE.ConeGeometry(6, 15, 8);
+    const arrowMat = new THREE.MeshStandardMaterial({ 
+        color: 0x22ff88,
+        emissive: 0x22ff88,
+        emissiveIntensity: 0.7
+    });
+    
+    // Crear marcadores en cada celda del camino
+    for (let i = 0; i < path.length; i++) {
+        const cell = path[i];
+        const cx = startX + cell.c * cellSize + cellSize / 2;
+        const cz = startZ + cell.r * cellSize + cellSize / 2;
+        
+        // Marcador de piso (solo cada 3 celdas para no saturar)
+        if (i % 3 === 0 || i === path.length - 1) {
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            marker.position.set(cx, 0.5, cz);
+            marker.rotation.x = Math.PI / 2;
+            marker.receiveShadow = true;
+            scene.add(marker);
+            
+            // Hacer que el marcador parpadee
+            animateMarker(marker, i * 100);
+        }
+        
+        // Flecha indicadora (solo en puntos clave)
+        if (i < path.length - 1 && (i % 5 === 0 || i === path.length - 2)) {
+            const nextCell = path[i + 1];
+            const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+            arrow.position.set(cx, 15, cz);
+            
+            // Calcular dirección hacia la siguiente celda
+            const dx = (nextCell.c - cell.c) * cellSize;
+            const dz = (nextCell.r - cell.r) * cellSize;
+            const angle = Math.atan2(dx, dz);
+            arrow.rotation.x = Math.PI / 2;
+            arrow.rotation.z = -angle;
+            
+            scene.add(arrow);
+            
+            // Animación de flotación
+            animateArrow(arrow, i * 200);
+        }
+    }
+    
+    // También crear un faro de luz en el portal
+    createPortalBeacon();
+}
+
+/** ========= ANIMAR MARCADORES ========= */
+function animateMarker(marker, delay) {
+    const originalY = marker.position.y;
+    let time = delay;
+    
+    function animate() {
+        time += 0.05;
+        marker.position.y = originalY + Math.sin(time) * 2;
+        marker.material.opacity = 0.6 + Math.sin(time * 2) * 0.2;
+        
+        // Continuar animación
+        if (marker.parent) {
+            requestAnimationFrame(animate);
+        }
+    }
+    
+    setTimeout(() => animate(), delay % 1000);
+}
+
+/** ========= ANIMAR FLECHAS ========= */
+function animateArrow(arrow, delay) {
+    const originalY = arrow.position.y;
+    let time = delay;
+    
+    function animate() {
+        time += 0.03;
+        arrow.position.y = originalY + Math.sin(time) * 3;
+        arrow.rotation.y += 0.01;
+        
+        // Continuar animación
+        if (arrow.parent) {
+            requestAnimationFrame(animate);
+        }
+    }
+    
+    setTimeout(() => animate(), delay % 1000);
+}
+
+/** ========= CREAR FARO DE PORTAL ========= */
+function createPortalBeacon() {
+    const beaconLight = new THREE.SpotLight(0x22ff88, 2, 1000, Math.PI / 4, 0.5, 2);
+    beaconLight.position.set(0, 100, 0);
+    beaconLight.target.position.set(0, 0, 0);
+    beaconLight.castShadow = true;
+    scene.add(beaconLight);
+    scene.add(beaconLight.target);
+    
+    // Hacer que el faro gire lentamente
+    scene.userData.beaconLight = beaconLight;
+    
+    console.log("Faro del portal creado");
+}
+
+// -------------------------------------------------------------------
 // ---------- CREACIÓN DE ENEMIGOS ----------
 // -------------------------------------------------------------------
 function spawnEnemiesInMaze(count) {
