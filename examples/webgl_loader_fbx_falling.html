@@ -246,6 +246,52 @@
             z-index: 11; 
             display: none; 
         }
+
+        /* LETRERO AL ENTRAR A VR - SIEMPRE VISIBLE */
+#vr-enter-sign {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 25px 40px;
+    border-radius: 12px;
+    border: 3px solid #22ff88;
+    z-index: 9999;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 0 30px rgba(34, 255, 136, 0.5);
+    display: none; /* Se mostrará con JavaScript */
+    width: 320px;
+    opacity: 1 !important; /* Siempre visible */
+}
+    
+#vr-enter-sign h2 {
+    color: #22ff88;
+    margin: 0 0 15px 0;
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+    
+#vr-enter-sign .stats {
+    font-size: 20px;
+    margin: 15px 0;
+    line-height: 1.6;
+}
+    
+#vr-enter-sign .stats span {
+    color: #22ff88;
+    font-weight: bold;
+}
+    
+#vr-enter-sign .tip {
+    font-size: 14px;
+    color: #aaa;
+    margin-top: 20px;
+    font-style: italic;
+}
         
     </style>
 
@@ -637,7 +683,24 @@ function initVR() {
         document.body.appendChild(fallbackVRButton);
     }
 }
-
+/** ========= FUNCIÓN PARA MOSTRAR LETRERO VR - SIEMPRE VISIBLE ========= */
+function showVREnterSign() {
+    const vrSign = document.getElementById('vr-enter-sign');
+    const vrLife = document.getElementById('vr-life');
+    const vrEnemies = document.getElementById('vr-enemies');
+    const lifeElement = document.getElementById('life');
+    
+    if (vrSign && vrLife && vrEnemies && lifeElement) {
+        // Actualizar valores
+        vrLife.textContent = lifeElement.textContent;
+        vrEnemies.textContent = enemies.filter(e => e.userData.alive).length;
+        
+        // Mostrar letrero (siempre visible, sin temporizador)
+        vrSign.style.display = 'block';
+        
+        console.log("Letrero VR mostrado permanentemente");
+    }
+}
 // -------------------------------------------------------------------
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
@@ -957,21 +1020,6 @@ function animateArrow(arrow, delay) {
     }
     
     setTimeout(() => animate(), delay % 1000);
-}
-
-/** ========= CREAR FARO DE PORTAL ========= */
-function createPortalBeacon() {
-    const beaconLight = new THREE.SpotLight(0x22ff88, 2, 1000, Math.PI / 4, 0.5, 2);
-    beaconLight.position.set(0, 100, 0);
-    beaconLight.target.position.set(0, 0, 0);
-    beaconLight.castShadow = true;
-    scene.add(beaconLight);
-    scene.add(beaconLight.target);
-    
-    // Hacer que el faro gire lentamente
-    scene.userData.beaconLight = beaconLight;
-    
-    console.log("Faro del portal creado");
 }
 
 // -------------------------------------------------------------------
@@ -1396,6 +1444,7 @@ function resolveCollisions(curr, next) {
 }
 
 /** ========= DAÑO AL JUGADOR ========= */
+/** ========= DAÑO AL JUGADOR ========= */
 function takeDamage(amount) {
     const lifeElement = document.getElementById('life');
     if (!lifeElement) return;
@@ -1403,6 +1452,12 @@ function takeDamage(amount) {
     let currentLife = parseInt(lifeElement.textContent);
     currentLife = Math.max(0, currentLife - amount);
     lifeElement.textContent = currentLife;
+    
+    // Actualizar letrero VR si está visible
+    const vrLife = document.getElementById('vr-life');
+    if (vrLife) {
+        vrLife.textContent = currentLife;
+    }
     
     if (currentLife <= 0) {
         gameOver();
@@ -1435,6 +1490,12 @@ function restartGame() {
     // Restaurar vida
     const lifeElement = document.getElementById('life');
     if (lifeElement) lifeElement.textContent = '100';
+    
+    // Actualizar letrero VR si está visible
+    const vrLife = document.getElementById('vr-life');
+    if (vrLife) {
+        vrLife.textContent = '100';
+    }
     
     // Limpiar escena
     while (scene.children.length > 0) {
@@ -1535,11 +1596,24 @@ function createVictoryEffects() {
     animateConfetti();
 }
 
-/** ========= ACTUALIZAR HUD ========= */
+/** ========= ACTUALIZAR HUD Y LETRERO VR ========= */
 function updateHUD() {
     const enemiesCount = document.getElementById('enemiesCount');
     if (enemiesCount) {
         enemiesCount.textContent = enemies.filter(e => e.userData.alive).length;
+    }
+    
+    // También actualizar el letrero VR si está visible
+    const vrSign = document.getElementById('vr-enter-sign');
+    if (vrSign && vrSign.style.display === 'block') {
+        const vrLife = document.getElementById('vr-life');
+        const vrEnemies = document.getElementById('vr-enemies');
+        const lifeElement = document.getElementById('life');
+        
+        if (vrLife && vrEnemies && lifeElement) {
+            vrLife.textContent = lifeElement.textContent;
+            vrEnemies.textContent = enemies.filter(e => e.userData.alive).length;
+        }
     }
 }
 
