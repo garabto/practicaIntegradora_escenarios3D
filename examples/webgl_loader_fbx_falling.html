@@ -12,8 +12,36 @@
         /* Contenedor de información simple (esquina superior izquierda) */
         #info { position:absolute; top:8px; left:8px; z-index:10; background:rgba(0,0,0,0.4); padding:8px; border-radius:6px; font-size: 14px; }
         
-        /* HUD (Head-Up Display): Vida y Enemigos (esquina superior derecha) */
-        #hud { position: absolute; right: 12px; top: 12px; z-index:10; background: rgba(0,0,0,0.5); padding:10px; border-radius:6px; text-align:right; min-width:140px; display: none; }
+        /* HUD (Head-Up Display): Vida y Enemigos - POSICIÓN VISIBLE EN VR */
+        #hud { 
+            position: absolute; 
+            left: 20px; 
+            bottom: 100px; /* Sobre el footer */
+            z-index: 100; 
+            background: rgba(0, 0, 0, 0.75); 
+            padding: 15px; 
+            border-radius: 10px; 
+            text-align: left; 
+            min-width: 180px; 
+            display: none;
+            border: 2px solid #22ff88;
+            backdrop-filter: blur(5px);
+            font-size: 18px;
+        }
+
+        #hud div {
+            margin: 8px 0;
+        }
+
+        #hud strong {
+            color: #22ff88;
+            margin-right: 10px;
+        }
+
+        #hud span {
+            color: #fff;
+            font-weight: bold;
+        }
         
         /* Mensajes centrales (¡GANASTE! / GAME OVER) */
         #message { 
@@ -247,51 +275,50 @@
             display: none; 
         }
 
-        /* LETRERO AL ENTRAR A VR - SIEMPRE VISIBLE */
-#vr-enter-sign {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.85);
-    color: #fff;
-    padding: 25px 40px;
-    border-radius: 12px;
-    border: 3px solid #22ff88;
-    z-index: 9999;
-    text-align: center;
-    font-family: Arial, sans-serif;
-    box-shadow: 0 0 30px rgba(34, 255, 136, 0.5);
-    display: none; /* Se mostrará con JavaScript */
-    width: 320px;
-    opacity: 1 !important; /* Siempre visible */
-}
-    
-#vr-enter-sign h2 {
-    color: #22ff88;
-    margin: 0 0 15px 0;
-    font-size: 24px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-    
-#vr-enter-sign .stats {
-    font-size: 20px;
-    margin: 15px 0;
-    line-height: 1.6;
-}
-    
-#vr-enter-sign .stats span {
-    color: #22ff88;
-    font-weight: bold;
-}
-    
-#vr-enter-sign .tip {
-    font-size: 14px;
-    color: #aaa;
-    margin-top: 20px;
-    font-style: italic;
-}
+        /* LETRERO AL ENTRAR A VR - TEMPORAL */
+        #vr-enter-sign {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 25px 40px;
+            border-radius: 12px;
+            border: 3px solid #22ff88;
+            z-index: 9999;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 0 30px rgba(34, 255, 136, 0.7);
+            display: none;
+            width: 320px;
+        }
+        
+        #vr-enter-sign h2 {
+            color: #22ff88;
+            margin: 0 0 15px 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #vr-enter-sign .stats {
+            font-size: 20px;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+        
+        #vr-enter-sign .stats span {
+            color: #22ff88;
+            font-weight: bold;
+        }
+        
+        #vr-enter-sign .tip {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 20px;
+            font-style: italic;
+        }
         
     </style>
 
@@ -309,7 +336,8 @@
 <body>
     <!-- Audio -->
     <audio id="shootSound" src="assets/Disparo.mp3"></audio>
-    <audio id="enemyDeathSound" src="assets/Explosion.mp3"></audio>
+    <audio id="explosionSound" src="assets/Explosion.mp3"></audio>
+    <audio id="enemyDeathSound" src="assets/Muerte_enemigos.mp3"></audio>
     <audio id="backgroundMusic" loop>
         <source src="assets/musica.mp3" type="audio/mpeg">
     </audio>
@@ -364,6 +392,20 @@
 
     <!-- Mira -->
     <div class="crosshair"></div>
+
+    <!-- Letrero VR temporal -->
+    <div id="vr-enter-sign">
+        <h2>MODO VR ACTIVADO</h2>
+        <div class="stats">
+            Vida: <span id="vr-life">100</span>
+        </div>
+        <div class="stats">
+            Enemigos restantes: <span id="vr-enemies">0</span>
+        </div>
+        <div class="tip">
+            Este mensaje desaparecerá en unos segundos
+        </div>
+    </div>
 
     <!-- Canvas para Three.js -->
     <canvas id="scene"></canvas>
@@ -475,29 +517,53 @@ function initScenes() {
     console.log("Escenas inicializadas");
 }
 
-/** ========= INICIALIZAR LUCES ========= */
+/** ========= INICIALIZAR LUCES - TEMÁTICA ALIENÍGENA ========= */
 function initLights() {
-    // Luz hemisférica
-    hemiLight = new THREE.HemisphereLight(0x8fb2ff, 0x0a0c10, 0.35);
+    // Luz ambiental alienígena (verde/azul)
+    const ambientLight = new THREE.AmbientLight(0x223344, 0.3);
+    scene.add(ambientLight);
+    
+    // Luz hemisférica con tonos alienígenas
+    hemiLight = new THREE.HemisphereLight(0x4477aa, 0x112233, 0.4);
     scene.add(hemiLight);
     
-    // Luz direccional principal
-    mainLight = new THREE.DirectionalLight(0xcfe2ff, 1.25);
+    // Luz direccional principal (como luz de luna alienígena)
+    mainLight = new THREE.DirectionalLight(0xaaccff, 0.8);
     mainLight.castShadow = true;
-    mainLight.shadow.mapSize.set(2048, 2048);
+    mainLight.shadow.mapSize.set(1024, 1024);
     mainLight.shadow.camera.near = 0.5;
-    mainLight.shadow.camera.far = 1000;
-    mainLight.position.set(50, 100, 50);
-    mainLight.shadow.camera.left = -200;
-    mainLight.shadow.camera.right = 200;
-    mainLight.shadow.camera.top = 200;
-    mainLight.shadow.camera.bottom = -200;
+    mainLight.shadow.camera.far = 500;
+    mainLight.position.set(30, 50, 30);
+    
+    // Configurar sombras
+    mainLight.shadow.camera.left = -100;
+    mainLight.shadow.camera.right = 100;
+    mainLight.shadow.camera.top = 100;
+    mainLight.shadow.camera.bottom = -100;
+    mainLight.shadow.bias = -0.001;
+    
     scene.add(mainLight);
     
-    console.log("Luces inicializadas");
+    // Luz de neón/portal (efecto especial)
+    const portalLight = new THREE.PointLight(0x22ff88, 1.5, 200);
+    portalLight.position.set(0, 20, 0);
+    scene.add(portalLight);
+    
+    // Luces puntuales para ambiente (efecto de laboratorio alienígena)
+    for (let i = 0; i < 4; i++) {
+        const pointLight = new THREE.PointLight(0x4477ff, 0.5, 150);
+        const angle = (i / 4) * Math.PI * 2;
+        pointLight.position.set(
+            Math.cos(angle) * 200,
+            30,
+            Math.sin(angle) * 200
+        );
+        scene.add(pointLight);
+    }
+    
+    console.log("Iluminación de temática alienígena inicializada");
 }
 
-/** ========= INICIALIZAR CIELO ========= */
 /** ========= INICIALIZAR CIELO ========= */
 function initSky() {
     try {
@@ -582,6 +648,101 @@ function initAudio() {
     }
 }
 
+/** ========= DISPARAR - CON SONIDOS ========= */
+function shoot() {
+    // Reproducir sonido de disparo
+    const shootSound = document.getElementById('shootSound');
+    if (shootSound) {
+        shootSound.currentTime = 0;
+        shootSound.play().catch(e => console.log('Error al reproducir sonido de disparo:', e));
+    }
+    
+    // Lógica de disparo
+    if (camera && enemies.length > 0) {
+        const raycaster = new THREE.Raycaster();
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+        raycaster.set(camera.position, direction);
+        
+        const intersects = raycaster.intersectObjects(enemies);
+        
+        if (intersects.length > 0) {
+            const enemy = intersects[0].object;
+            
+            if (enemy.userData.alive) {
+                // Aplicar daño
+                enemy.userData.health -= 25;
+                
+                // Reproducir sonido de explosión
+                const explosionSound = document.getElementById('explosionSound');
+                if (explosionSound) {
+                    explosionSound.currentTime = 0;
+                    explosionSound.play().catch(e => console.log('Error al reproducir explosión:', e));
+                }
+                
+                // Efecto visual de daño
+                enemy.material.emissive.setHex(0xff0000);
+                setTimeout(() => {
+                    if (enemy.material) {
+                        enemy.material.emissive.setHex(0x220000);
+                    }
+                }, 100);
+                
+                // Verificar si el enemigo murió
+                if (enemy.userData.health <= 0) {
+                    enemy.userData.alive = false;
+                    enemy.visible = false;
+                    
+                    // Reproducir sonido de muerte
+                    const deathSound = document.getElementById('enemyDeathSound');
+                    if (deathSound) {
+                        deathSound.currentTime = 0;
+                        deathSound.play().catch(e => console.log('Error al reproducir muerte:', e));
+                    }
+                }
+                
+                // Actualizar HUD
+                updateHUD();
+            }
+        }
+    }
+}
+
+/** ========= CONTROL DE DISPARO EN VR ========= */
+function initVRShooting() {
+    if (controllerRight) {
+        controllerRight.addEventListener('selectstart', () => {
+            shoot();
+            
+            // Disparo continuo mientras se mantiene presionado
+            controllerRight.userData.shootingInterval = setInterval(shoot, 200);
+        });
+        
+        controllerRight.addEventListener('selectend', () => {
+            // Detener disparo continuo
+            if (controllerRight.userData.shootingInterval) {
+                clearInterval(controllerRight.userData.shootingInterval);
+                controllerRight.userData.shootingInterval = null;
+            }
+        });
+    }
+    
+    // También disparar con clic del mouse (para pruebas en desktop)
+    document.addEventListener('click', (e) => {
+        if (!renderer.xr.isPresenting && gameInitialized) {
+            shoot();
+        }
+    });
+    
+    // Disparar con barra espaciadora (para pruebas en desktop)
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !renderer.xr.isPresenting && gameInitialized) {
+            shoot();
+            e.preventDefault();
+        }
+    });
+}
+
 /** ========= INICIALIZAR VR ========= */
 function initVR() {
     try {
@@ -592,6 +753,15 @@ function initVR() {
         document.body.appendChild(vrButton);
         
         console.log("Botón VR creado");
+        
+        // Evento cuando se entra en VR
+        vrButton.addEventListener('click', () => {
+            setTimeout(() => {
+                if (renderer.xr.isPresenting) {
+                    showVREnterSign();
+                }
+            }, 500);
+        });
         
         // Esperar a que el renderer esté listo
         setTimeout(() => {
@@ -666,7 +836,10 @@ function initVR() {
                     }
                 });
                 
-                console.log("Sistema de teleport inicializado");
+                // Inicializar sistema de disparo
+                initVRShooting();
+                
+                console.log("Sistema de teleport y disparo inicializado");
             } else {
                 console.warn("Controladores VR no disponibles");
             }
@@ -683,7 +856,8 @@ function initVR() {
         document.body.appendChild(fallbackVRButton);
     }
 }
-/** ========= FUNCIÓN PARA MOSTRAR LETRERO VR - SIEMPRE VISIBLE ========= */
+
+/** ========= FUNCIÓN PARA MOSTRAR LETRERO VR - TEMPORAL ========= */
 function showVREnterSign() {
     const vrSign = document.getElementById('vr-enter-sign');
     const vrLife = document.getElementById('vr-life');
@@ -695,16 +869,22 @@ function showVREnterSign() {
         vrLife.textContent = lifeElement.textContent;
         vrEnemies.textContent = enemies.filter(e => e.userData.alive).length;
         
-        // Mostrar letrero (siempre visible, sin temporizador)
+        // Mostrar letrero temporalmente
         vrSign.style.display = 'block';
         
-        console.log("Letrero VR mostrado permanentemente");
+        console.log("Letrero VR mostrado temporalmente");
+        
+        // Ocultar automáticamente después de 5 segundos
+        setTimeout(() => {
+            vrSign.style.display = 'none';
+            console.log("Letrero VR ocultado");
+        }, 5000);
     }
 }
+
 // -------------------------------------------------------------------
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
-/** ========= GENERACIÓN DEL LABERINTO (con texturas - VERSIÓN CORREGIDA) ========= */
 /** ========= GENERACIÓN DEL LABERINTO (altura reducida) ========= */
 function generateMaze(rows, cols, cellSize) {
     console.log(`Generando laberinto ${rows}x${cols} (altura: ${CONFIG.WALL_HEIGHT})...`);
@@ -1441,7 +1621,6 @@ function resolveCollisions(curr, next) {
     return next;
 }
 
-/** ========= DAÑO AL JUGADOR ========= */
 /** ========= DAÑO AL JUGADOR ========= */
 function takeDamage(amount) {
     const lifeElement = document.getElementById('life');
