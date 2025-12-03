@@ -103,6 +103,33 @@
             background: #44ffaa;
         }
 
+        .vr-button {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: linear-gradient(45deg, #2196F3, #21CBF3);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .vr-button:hover {
+        background: linear-gradient(45deg, #1976D2, #1E88E5);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(33, 150, 243, 0.6);
+    }
+
+    .vr-button:active {
+        transform: translateY(0);
+    }
+
         
         /* Mira del jugador (cruz en el centro) */
         .crosshair { position: absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; z-index:9; pointer-events:none; opacity:0.85; }
@@ -993,6 +1020,9 @@ function triggerHapticFeedback(hand, intensity, duration) {
                 bgMusic.play().catch(e => console.log("Audio necesita interacción del usuario"));
             }, 500);
         });
+
+        // Configurar límites básicos para VR
+        setupBasicBoundaries();
     }
 
     // -------------------------------------------------------------------
@@ -1482,6 +1512,40 @@ function triggerHapticFeedback(hand, intensity, duration) {
 
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
+    // Función para configurar límites básicos (útil si el dispositivo no los proporciona)
+function setupBasicBoundaries() {
+    // Crear un área de juego circular de 2 metros de radio
+    const boundaryRadius = 2.0;
+    const segments = 32;
+    
+    const boundaryGeometry = new THREE.BufferGeometry();
+    const vertices = [];
+    
+    for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        vertices.push(
+            Math.cos(angle) * boundaryRadius, 
+            0.05,  // Pequeña altura
+            Math.sin(angle) * boundaryRadius
+        );
+    }
+    
+    boundaryGeometry.setAttribute('position', 
+        new THREE.Float32BufferAttribute(vertices, 3));
+    
+    const boundaryMaterial = new THREE.LineBasicMaterial({ 
+        color: 0x00ff00, 
+        opacity: 0.3, 
+        transparent: true,
+        linewidth: 2
+    });
+    
+    const boundary = new THREE.Line(boundaryGeometry, boundaryMaterial);
+    scene.add(boundary);
+    scene.userData.boundary = boundary;
+    
+    console.log("Límites básicos configurados (radio: 2m)");
+}
 
 </script>
 </body>
