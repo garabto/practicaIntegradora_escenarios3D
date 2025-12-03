@@ -641,8 +641,9 @@ function initVR() {
 // -------------------------------------------------------------------
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
+/** ========= GENERACIÓN DEL LABERINTO (con texturas) ========= */
 function generateMaze(rows, cols, cellSize) {
-    console.log(`Generando laberinto ${rows}x${cols}...`);
+    console.log(`Generando laberinto ${rows}x${cols} con texturas...`);
     
     const grid = [];
     for (let r = 0; r < rows; r++) {
@@ -714,15 +715,46 @@ function generateMaze(rows, cols, cellSize) {
         CONFIG.WALL_HEIGHT, 
         CONFIG.WALL_THICKNESS
     );
-
-
     
-    // Material simple para paredes (sin textura)
-    const wallMaterial = new THREE.MeshStandardMaterial({
-        color: 0x666666,
-        roughness: 0.8,
-        metalness: 0.2
-    });
+    // Cargar textura de paredes con fallback a color sólido
+    const textureLoader = new THREE.TextureLoader();
+    let wallMaterial;
+    
+    try {
+        const wallTexture = textureLoader.load(CONFIG.WALL_TEX, 
+            (texture) => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                // Calcular repetición basada en el tamaño de la pared
+                const repeatX = (cellSize + CONFIG.WALL_THICKNESS) / 100;
+                const repeatY = CONFIG.WALL_HEIGHT / 100;
+                texture.repeat.set(repeatX, repeatY);
+                console.log("Textura de paredes cargada correctamente");
+            },
+            undefined,
+            (error) => {
+                console.warn("Error al cargar textura de paredes, usando color sólido:", error);
+                wallMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x666666,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+            }
+        );
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+            map: wallTexture,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+    } catch (error) {
+        console.warn("Error al crear material de paredes, usando fallback:", error);
+        wallMaterial = new THREE.MeshStandardMaterial({
+            color: 0x666666,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+    }
     
     function createWall(posX, posZ, rotY) {
         const wall = new THREE.Mesh(wallGeo, wallMaterial);
@@ -739,6 +771,51 @@ function generateMaze(rows, cols, cellSize) {
             boundingBox: wallBox, 
             static: true 
         });
+        
+        // Aplicar textura UV correctamente
+        if (wall.material.map) {
+            wall.geometry.computeBoundingBox();
+            const max = wall.geometry.boundingBox.max;
+            const min = wall.geometry.boundingBox.min;
+            
+            const offset = new THREE.Vector2(0, 0);
+            const repeat = new THREE.Vector2(1, 1);
+            
+            wall.geometry.faceVertexUvs[0] = [];
+            
+            const faceIndices = ['a', 'b', 'c'];
+            
+            for (let i = 0; i < wall.geometry.faces.length; i++) {
+                const face = wall.geometry.faces[i];
+                const uv = [];
+                
+                for (let j = 0; j < 3; j++) {
+                    const vertexIndex = face[faceIndices[j]];
+                    const vertex = wall.geometry.vertices[vertexIndex];
+                    
+                    let u, v;
+                    if (Math.abs(face.normal.y) > 0.5) {
+                        // Caras superior/inferior
+                        u = (vertex.x - min.x) / (max.x - min.x);
+                        v = (vertex.z - min.z) / (max.z - min.z);
+                    } else if (Math.abs(face.normal.x) > 0.5) {
+                        // Caras laterales X
+                        u = (vertex.z - min.z) / (max.z - min.z);
+                        v = (vertex.y - min.y) / (max.y - min.y);
+                    } else {
+                        // Caras laterales Z
+                        u = (vertex.x - min.x) / (max.x - min.x);
+                        v = (vertex.y - min.y) / (max.y - min.y);
+                    }
+                    
+                    uv.push(new THREE.Vector2(u, v));
+                }
+                
+                wall.geometry.faceVertexUvs[0].push(uv);
+            }
+            
+            wall.geometry.uvsNeedUpdate = true;
+        }
     }
     
     for (let r = 0; r < rows; r++) {
@@ -754,6 +831,31 @@ function generateMaze(rows, cols, cellSize) {
         }
     }
     
+    // Añadir esquinas para paredes externas
+    const outerWallGeo = new THREE.BoxGeometry(
+        CONFIG.WALL_THICKNESS, 
+        CONFIG.WALL_HEIGHT, 
+        CONFIG.WALL_THICKNESS
+    );
+    
+    // Paredes externas norte y sur
+    for (let c = 0; c < cols; c++) {
+        const cx = startX + c * cellSize + cellSize / 2;
+        // Norte
+        createWall(cx, startZ - cellSize / 2, 0);
+        // Sur
+        createWall(cx, startZ + rows * cellSize - cellSize / 2, 0);
+    }
+    
+    // Paredes externas este y oeste
+    for (let r = 0; r < rows; r++) {
+        const cz = startZ + r * cellSize + cellSize / 2;
+        // Oeste
+        createWall(startX - cellSize / 2, cz, Math.PI / 2);
+        // Este
+        createWall(startX + cols * cellSize - cellSize / 2, cz, Math.PI / 2);
+    }
+    
     scene.userData.maze = { 
         grid, 
         startX, 
@@ -763,9 +865,8 @@ function generateMaze(rows, cols, cellSize) {
         cellSize 
     };
     
-    console.log(`Laberinto generado: ${rows}x${cols} celdas`);
+    console.log(`Laberinto generado: ${rows}x${cols} celdas con texturas`);
 }
-
 // -------------------------------------------------------------------
 // ---------- CREACIÓN DE ENEMIGOS ----------
 // -------------------------------------------------------------------
