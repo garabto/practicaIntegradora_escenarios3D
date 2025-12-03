@@ -249,13 +249,14 @@
         
     </style>
 
+    <!-- Importar Three.js desde CDN -->
     <script type="importmap">
-        {
-            "imports": {
-                "three": "../build/three.module.js",
-                "three/addons/": "./jsm/"
-            }
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/"
         }
+    }
     </script>
 </head>
 <body>
@@ -361,9 +362,9 @@ const CONFIG = {
     ENEMY_ATTACK_RANGE: 15,
     ENEMY_ATTACK_DAMAGE: 8,
     
-    // Texturas
-    WALL_TEX: 'assets/textures/wall.jpg',
-    FLOOR_TEX: 'assets/textures/floor.jpg',
+    // Texturas (usaremos colores sólidos para simplificar)
+    // WALL_TEX: 'assets/textures/wall.jpg',
+    // FLOOR_TEX: 'assets/textures/floor.jpg',
     
     // VR
     PLAYER_RADIUS: 0.35,
@@ -378,6 +379,11 @@ const CONFIG = {
     MAX_SLOPE_DEG: 45
 };
 
+// Importar módulos necesarios
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+
 // Variables globales
 let scene, camera, player, renderer;
 let physicsObjects = [];
@@ -386,29 +392,39 @@ let gameInitialized = false;
 let clock = new THREE.Clock();
 let bgScene, bgCam, skyMesh, starField;
 let mainLight, hemiLight;
-let listener, windSfx;
+let listener;
 let controllerLeft, controllerRight, grip0, grip1;
 let arcLine, marker, teleportPoint;
 let teleportValid = false;
 let arcPointsBuf;
 let arcMatOK, arcMatBAD, arcGeo;
+let vrButton;
 
 /** ========= INICIALIZAR RENDERER ========= */
 function initRenderer() {
     const canvas = document.getElementById('scene');
-    renderer = new THREE.WebGLRenderer({ 
-        canvas, 
-        antialias: true,
-        alpha: true
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.xr.enabled = true;
-    renderer.autoClear = false;
     
-    return renderer;
+    try {
+        renderer = new THREE.WebGLRenderer({ 
+            canvas, 
+            antialias: true,
+            alpha: true
+        });
+        
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.xr.enabled = true;
+        renderer.autoClear = false;
+        
+        console.log("Renderer inicializado correctamente");
+        return renderer;
+    } catch (error) {
+        console.error("Error al inicializar renderer:", error);
+        alert("Error al inicializar WebGL. Verifica que tu navegador soporte WebGL y prueba en Chrome o Firefox.");
+        throw error;
+    }
 }
 
 /** ========= INICIALIZAR ESCENAS ========= */
@@ -427,6 +443,8 @@ function initScenes() {
     player = new THREE.Group();
     player.add(camera);
     scene.add(player);
+    
+    console.log("Escenas inicializadas");
 }
 
 /** ========= INICIALIZAR LUCES ========= */
@@ -447,186 +465,188 @@ function initLights() {
     mainLight.shadow.camera.top = 200;
     mainLight.shadow.camera.bottom = -200;
     scene.add(mainLight);
+    
+    console.log("Luces inicializadas");
 }
 
 /** ========= INICIALIZAR CIELO ========= */
 function initSky() {
-    // Sky dome
-    const skyGeo = new THREE.SphereGeometry(2000, 48, 24);
-    const skyMat = new THREE.ShaderMaterial({
-        side: THREE.BackSide,
-        depthWrite: false,
-        depthTest: false,
-        fog: false,
-        uniforms: {
-            topColor: { value: new THREE.Color(0x0a1f35) },
-            bottomColor: { value: new THREE.Color(0x050910) }
-        },
-        vertexShader: `
-            varying vec3 vDir;
-            void main() {
-                vDir = normalize(position);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            varying vec3 vDir;
-            uniform vec3 topColor;
-            uniform vec3 bottomColor;
-            void main() {
-                float t = smoothstep(-0.2, 0.8, vDir.y);
-                vec3 col = mix(bottomColor, topColor, t);
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `
-    });
-    
-    skyMesh = new THREE.Mesh(skyGeo, skyMat);
-    skyMesh.renderOrder = -2;
-    skyMesh.frustumCulled = false;
-    bgScene.add(skyMesh);
-    
-    // Estrellas
-    const starCount = 3500;
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-        const r = 1400 + Math.random() * 400;
-        const a = Math.random() * Math.PI * 2;
-        const b = Math.acos(2 * Math.random() - 1);
-        starPositions[i * 3] = r * Math.sin(b) * Math.cos(a);
-        starPositions[i * 3 + 1] = r * Math.cos(b);
-        starPositions[i * 3 + 2] = r * Math.sin(b) * Math.sin(a);
+    try {
+        // Sky dome simplificado
+        const skyGeo = new THREE.SphereGeometry(2000, 48, 24);
+        const skyMat = new THREE.MeshBasicMaterial({
+            color: 0x0a1f35,
+            side: THREE.BackSide
+        });
+        
+        skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        skyMesh.renderOrder = -2;
+        skyMesh.frustumCulled = false;
+        bgScene.add(skyMesh);
+        
+        // Estrellas simplificadas
+        const starCount = 1000;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            const r = 1400 + Math.random() * 400;
+            const a = Math.random() * Math.PI * 2;
+            const b = Math.acos(2 * Math.random() - 1);
+            starPositions[i * 3] = r * Math.sin(b) * Math.cos(a);
+            starPositions[i * 3 + 1] = r * Math.cos(b);
+            starPositions[i * 3 + 2] = r * Math.sin(b) * Math.sin(a);
+        }
+        
+        const starGeo = new THREE.BufferGeometry();
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMat = new THREE.PointsMaterial({
+            size: 2.2,
+            sizeAttenuation: false,
+            color: 0xffffff,
+            fog: false,
+            depthTest: false,
+            transparent: true,
+            opacity: 0.95
+        });
+        
+        starField = new THREE.Points(starGeo, starMat);
+        starField.renderOrder = -1;
+        starField.matrixAutoUpdate = false;
+        starField.frustumCulled = false;
+        bgScene.add(starField);
+        
+        console.log("Cielo inicializado");
+    } catch (error) {
+        console.error("Error al inicializar cielo:", error);
     }
-    
-    const starGeo = new THREE.BufferGeometry();
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starMat = new THREE.PointsMaterial({
-        size: 2.2,
-        sizeAttenuation: false,
-        color: 0xffffff,
-        fog: false,
-        depthTest: false,
-        transparent: true,
-        opacity: 0.95
-    });
-    
-    starField = new THREE.Points(starGeo, starMat);
-    starField.renderOrder = -1;
-    starField.matrixAutoUpdate = false;
-    starField.frustumCulled = false;
-    bgScene.add(starField);
 }
 
 /** ========= INICIALIZAR AUDIO ========= */
 function initAudio() {
-    listener = new THREE.AudioListener();
-    camera.add(listener);
-    
-    // Iniciar música de fondo
-    const backgroundMusic = document.getElementById('backgroundMusic');
-    if (backgroundMusic) {
-        backgroundMusic.volume = 0.3;
-        backgroundMusic.play().catch(e => console.log('Audio bloqueado:', e));
-    }
-    
-    // Iniciar audio ambiente
-    const ambientEl = document.getElementById('ambient');
-    if (ambientEl) {
-        try {
-            const ctx = listener.context;
-            const srcNode = ctx.createMediaElementSource(ambientEl);
-            srcNode.connect(listener.getInput());
-            ambientEl.loop = true;
-            ambientEl.volume = 0.4;
-            ambientEl.play().catch(() => {});
-        } catch (e) {
-            console.warn('Audio ambiente bloqueado:', e);
+    try {
+        listener = new THREE.AudioListener();
+        camera.add(listener);
+        
+        // Iniciar música de fondo
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        if (backgroundMusic) {
+            backgroundMusic.volume = 0.3;
+            backgroundMusic.play().catch(e => console.log('Audio bloqueado, requiere interacción del usuario:', e));
         }
+        
+        console.log("Audio inicializado");
+    } catch (error) {
+        console.error("Error al inicializar audio:", error);
     }
 }
 
 /** ========= INICIALIZAR VR ========= */
 function initVR() {
-    // Botón VR
-    const vrBtn = VRButton.createButton(renderer);
-    vrBtn.classList.add('vr-button');
-    document.body.appendChild(vrBtn);
-    
-    // Controladores
-    controllerLeft = renderer.xr.getController(0);
-    controllerRight = renderer.xr.getController(1);
-    scene.add(controllerLeft, controllerRight);
-    
-    const controllerModelFactory = new XRControllerModelFactory();
-    grip0 = renderer.xr.getControllerGrip(0);
-    grip0.add(controllerModelFactory.createControllerModel(grip0));
-    scene.add(grip0);
-    
-    grip1 = renderer.xr.getControllerGrip(1);
-    grip1.add(controllerModelFactory.createControllerModel(grip1));
-    scene.add(grip1);
-    
-    // Arco de teleport
-    arcMatOK = new THREE.LineBasicMaterial({ 
-        color: 0x7ad1ff, 
-        transparent: true, 
-        opacity: 0.95 
-    });
-    arcMatBAD = new THREE.LineBasicMaterial({ 
-        color: 0xff5a5a, 
-        transparent: true, 
-        opacity: 0.95 
-    });
-    
-    arcGeo = new THREE.BufferGeometry().setFromPoints(
-        new Array(CONFIG.ARC_STEPS).fill(0).map(() => new THREE.Vector3())
-    );
-    arcLine = new THREE.Line(arcGeo, arcMatOK);
-    arcLine.visible = false;
-    scene.add(arcLine);
-    
-    marker = new THREE.Mesh(
-        new THREE.RingGeometry(0.25, 0.30, 32),
-        new THREE.MeshBasicMaterial({ 
-            color: 0x7ad1ff, 
-            transparent: true, 
-            opacity: 0.9, 
-            side: THREE.DoubleSide 
-        })
-    );
-    marker.rotation.x = -Math.PI / 2;
-    marker.visible = false;
-    scene.add(marker);
-    
-    teleportPoint = new THREE.Vector3();
-    arcPointsBuf = new Float32Array(CONFIG.ARC_STEPS * 3);
-    
-    // Eventos de teleport
-    controllerRight.addEventListener('selectstart', () => { 
-        arcLine.visible = true; 
-        marker.visible = true; 
-    });
-    
-    controllerRight.addEventListener('selectend', () => {
-        arcLine.visible = false;
-        marker.visible = false;
-        if (teleportValid) {
-            const floorY = -0.1 + 1.6;
-            player.position.set(teleportPoint.x, floorY, teleportPoint.z);
-            player.position.copy(resolveCollisions(player.position, player.position));
-        }
-    });
-    
-    // Mostrar botón VR
-    setTimeout(() => {
-        vrBtn.style.display = 'block';
-    }, 1000);
+    try {
+        // Botón VR
+        vrButton = VRButton.createButton(renderer);
+        vrButton.classList.add('vr-button');
+        vrButton.style.display = 'block';
+        document.body.appendChild(vrButton);
+        
+        console.log("Botón VR creado");
+        
+        // Esperar a que el renderer esté listo
+        setTimeout(() => {
+            // Controladores
+            controllerLeft = renderer.xr.getController(0);
+            controllerRight = renderer.xr.getController(1);
+            
+            if (controllerLeft && controllerRight) {
+                scene.add(controllerLeft);
+                scene.add(controllerRight);
+                
+                const controllerModelFactory = new XRControllerModelFactory();
+                
+                grip0 = renderer.xr.getControllerGrip(0);
+                grip0.add(controllerModelFactory.createControllerModel(grip0));
+                scene.add(grip0);
+                
+                grip1 = renderer.xr.getControllerGrip(1);
+                grip1.add(controllerModelFactory.createControllerModel(grip1));
+                scene.add(grip1);
+                
+                console.log("Controladores VR inicializados");
+                
+                // Arco de teleport
+                arcMatOK = new THREE.LineBasicMaterial({ 
+                    color: 0x7ad1ff, 
+                    transparent: true, 
+                    opacity: 0.95 
+                });
+                arcMatBAD = new THREE.LineBasicMaterial({ 
+                    color: 0xff5a5a, 
+                    transparent: true, 
+                    opacity: 0.95 
+                });
+                
+                arcGeo = new THREE.BufferGeometry().setFromPoints(
+                    new Array(CONFIG.ARC_STEPS).fill(0).map(() => new THREE.Vector3())
+                );
+                arcLine = new THREE.Line(arcGeo, arcMatOK);
+                arcLine.visible = false;
+                scene.add(arcLine);
+                
+                marker = new THREE.Mesh(
+                    new THREE.RingGeometry(0.25, 0.30, 32),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0x7ad1ff, 
+                        transparent: true, 
+                        opacity: 0.9, 
+                        side: THREE.DoubleSide 
+                    })
+                );
+                marker.rotation.x = -Math.PI / 2;
+                marker.visible = false;
+                scene.add(marker);
+                
+                teleportPoint = new THREE.Vector3();
+                arcPointsBuf = new Float32Array(CONFIG.ARC_STEPS * 3);
+                
+                // Eventos de teleport
+                controllerRight.addEventListener('selectstart', () => { 
+                    arcLine.visible = true; 
+                    marker.visible = true; 
+                });
+                
+                controllerRight.addEventListener('selectend', () => {
+                    arcLine.visible = false;
+                    marker.visible = false;
+                    if (teleportValid) {
+                        const floorY = -0.1 + 1.6;
+                        player.position.set(teleportPoint.x, floorY, teleportPoint.z);
+                        player.position.copy(resolveCollisions(player.position, player.position));
+                    }
+                });
+                
+                console.log("Sistema de teleport inicializado");
+            } else {
+                console.warn("Controladores VR no disponibles");
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error("Error al inicializar VR:", error);
+        // Crear botón VR simple como fallback
+        const fallbackVRButton = document.createElement('button');
+        fallbackVRButton.textContent = 'VR NO DISPONIBLE';
+        fallbackVRButton.classList.add('vr-button');
+        fallbackVRButton.style.background = '#ff4444';
+        fallbackVRButton.style.cursor = 'not-allowed';
+        document.body.appendChild(fallbackVRButton);
+    }
 }
 
 // -------------------------------------------------------------------
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
 function generateMaze(rows, cols, cellSize) {
+    console.log(`Generando laberinto ${rows}x${cols}...`);
+    
     const grid = [];
     for (let r = 0; r < rows; r++) {
         grid[r] = [];
@@ -698,12 +718,9 @@ function generateMaze(rows, cols, cellSize) {
         CONFIG.WALL_THICKNESS
     );
     
-    const texLoader = new THREE.TextureLoader();
-    const wallMap = texLoader.load(CONFIG.WALL_TEX);
-    wallMap.wrapS = wallMap.wrapT = THREE.RepeatWrapping;
-    
+    // Material simple para paredes (sin textura)
     const wallMaterial = new THREE.MeshStandardMaterial({
-        map: wallMap,
+        color: 0x666666,
         roughness: 0.8,
         metalness: 0.2
     });
@@ -715,13 +732,6 @@ function generateMaze(rows, cols, cellSize) {
         wall.receiveShadow = true;
         wall.castShadow = true;
         scene.add(wall);
-        
-        if (wall.material.map) {
-            wall.material.map.repeat.set(
-                1, 
-                CONFIG.WALL_HEIGHT / (CONFIG.WALL_THICKNESS * 2)
-            );
-        }
         
         wall.updateMatrixWorld();
         const wallBox = new THREE.Box3().setFromObject(wall);
@@ -878,7 +888,7 @@ function createGoalAtEnd() {
 // ---------- PARTÍCULAS DEL PORTAL ----------
 // -------------------------------------------------------------------
 function createPortalParticles(x, z) {
-    const particleCount = 100;
+    const particleCount = 50; // Reducido para mejor rendimiento
     const particleGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
@@ -929,13 +939,9 @@ function createFloor() {
     const floorWidth = cols * cellSize + cellSize * 2;
     const floorHeight = rows * cellSize + cellSize * 2;
     
-    const texLoader = new THREE.TextureLoader();
-    const floorMap = texLoader.load(CONFIG.FLOOR_TEX);
-    floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
-    floorMap.repeat.set(rows * 0.5, cols * 0.5);
-    
+    // Material simple para piso (sin textura)
     const floorMat = new THREE.MeshStandardMaterial({ 
-        map: floorMap, 
+        color: 0x333333, 
         roughness: 0.9,
         metalness: 0.1
     });
@@ -957,6 +963,8 @@ function createFloor() {
 // ---------- INICIALIZACIÓN DEL ESCENARIO ----------
 // -------------------------------------------------------------------
 function createGameScene() {
+    console.log("Creando escenario del juego...");
+    
     // Limpiar escena si ya existe
     physicsObjects = [];
     enemies = [];
@@ -1020,6 +1028,8 @@ function animatePortalParticles(deltaTime) {
 
 /** ========= LOCOMOCIÓN VR ========= */
 function vrGamepadMove(dt) {
+    if (!renderer.xr.isPresenting) return;
+    
     const session = renderer.xr.getSession();
     if (!session) return;
     
@@ -1064,7 +1074,9 @@ function vrGamepadMove(dt) {
 
 /** ========= TELEPORT ========= */
 function updateTeleportArc() {
-    if (!arcLine.visible) return;
+    if (!arcLine || !arcLine.visible) return;
+    if (!controllerRight) return;
+    
     teleportValid = false;
 
     const origin = new THREE.Vector3().setFromMatrixPosition(controllerRight.matrixWorld);
@@ -1262,7 +1274,7 @@ function checkVictory() {
 /** ========= EFECTOS DE VICTORIA ========= */
 function createVictoryEffects() {
     // Crear confeti
-    const confettiCount = 200;
+    const confettiCount = 100; // Reducido para mejor rendimiento
     const confettiGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(confettiCount * 3);
     const colors = new Float32Array(confettiCount * 3);
@@ -1334,99 +1346,131 @@ function showMessage(text, isVictory = false) {
 
 /** ========= LOOP DEL JUEGO ========= */
 function gameLoop() {
-    const dt = Math.min(clock.getDelta(), 0.05);
+    try {
+        const dt = Math.min(clock.getDelta(), 0.05);
 
-    if (renderer.xr.isPresenting) {
-        vrGamepadMove(dt);
-        updateTeleportArc();
+        if (renderer.xr.isPresenting) {
+            vrGamepadMove(dt);
+            updateTeleportArc();
+        }
+
+        // Mantener fondo centrado
+        const p = player.position;
+        if (skyMesh) skyMesh.position.copy(p);
+        if (starField) starField.position.copy(p);
+
+        // Animar partículas del portal
+        animatePortalParticles(dt);
+
+        // Actualizar UI
+        updateHUD();
+
+        // Verificar victoria
+        checkVictory();
+
+        // Renderizar
+        renderer.clear();
+        if (bgCam && camera) {
+            bgCam.projectionMatrix.copy(camera.projectionMatrix);
+            bgCam.matrixWorld.copy(camera.matrixWorld);
+            bgCam.matrixWorldInverse.copy(camera.matrixWorldInverse);
+            renderer.render(bgScene, bgCam);
+        }
+        renderer.render(scene, camera);
+    } catch (error) {
+        console.error("Error en gameLoop:", error);
     }
-
-    // Mantener fondo centrado
-    const p = player.position;
-    skyMesh.position.copy(p);
-    starField.position.copy(p);
-
-    // Animar partículas del portal
-    animatePortalParticles(dt);
-
-    // Actualizar UI
-    updateHUD();
-
-    // Verificar victoria
-    checkVictory();
-
-    // Renderizar
-    renderer.clear();
-    bgCam.projectionMatrix.copy(camera.projectionMatrix);
-    bgCam.matrixWorld.copy(camera.matrixWorld);
-    bgCam.matrixWorldInverse.copy(camera.matrixWorldInverse);
-    renderer.render(bgScene, bgCam);
-    renderer.render(scene, camera);
 }
 
 /** ========= INICIALIZAR JUEGO ========= */
 function initGame() {
-    if (gameInitialized) return;
+    if (gameInitialized) {
+        console.log("Juego ya inicializado");
+        return;
+    }
     
     console.log("Iniciando juego...");
     
-    // Ocultar portada
-    const portada = document.getElementById('portada');
-    portada.style.display = 'none';
-    
-    // Mostrar elementos del juego
-    const canvas = document.getElementById('scene');
-    canvas.style.display = 'block';
-    
-    const hud = document.getElementById('hud');
-    hud.style.display = 'block';
-    
-    const crosshair = document.querySelector('.crosshair');
-    crosshair.style.display = 'block';
-    
-    const footer = document.querySelector('footer');
-    footer.style.display = 'flex';
-    
-    const vrInfo = document.getElementById('vr-info');
-    vrInfo.style.display = 'block';
-    
-    // Inicializar Three.js
-    initRenderer();
-    initScenes();
-    initLights();
-    initSky();
-    initAudio();
-    initVR();
-    
-    // Crear escenario del juego
-    createGameScene();
-    
-    // Iniciar loop del juego
-    renderer.setAnimationLoop(gameLoop);
-    
-    gameInitialized = true;
-    
-    // Actualizar HUD inicial
-    updateHUD();
-    
-    console.log("Juego inicializado correctamente");
+    try {
+        // Ocultar portada
+        const portada = document.getElementById('portada');
+        portada.style.display = 'none';
+        
+        // Mostrar elementos del juego
+        const canvas = document.getElementById('scene');
+        canvas.style.display = 'block';
+        
+        const hud = document.getElementById('hud');
+        if (hud) hud.style.display = 'block';
+        
+        const crosshair = document.querySelector('.crosshair');
+        if (crosshair) crosshair.style.display = 'block';
+        
+        const footer = document.querySelector('footer');
+        if (footer) footer.style.display = 'flex';
+        
+        const vrInfo = document.getElementById('vr-info');
+        if (vrInfo) vrInfo.style.display = 'block';
+        
+        // Inicializar Three.js
+        initRenderer();
+        initScenes();
+        initLights();
+        initSky();
+        initAudio();
+        initVR();
+        
+        // Crear escenario del juego
+        createGameScene();
+        
+        // Iniciar loop del juego
+        renderer.setAnimationLoop(gameLoop);
+        
+        gameInitialized = true;
+        
+        // Actualizar HUD inicial
+        updateHUD();
+        
+        console.log("Juego inicializado correctamente");
+        
+        // Activar audio después de interacción del usuario
+        document.addEventListener('click', function activateAudio() {
+            const backgroundMusic = document.getElementById('backgroundMusic');
+            if (backgroundMusic) {
+                backgroundMusic.play().catch(e => console.log('Audio activado'));
+            }
+            document.removeEventListener('click', activateAudio);
+        });
+        
+    } catch (error) {
+        console.error("Error al inicializar el juego:", error);
+        alert("Error al iniciar el juego: " + error.message);
+    }
 }
 
 /** ========= RESIZE ========= */
 window.addEventListener('resize', () => {
     if (!gameInitialized) return;
     
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    if (camera) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    }
     
-    bgCam.aspect = window.innerWidth / window.innerHeight;
-    bgCam.updateProjectionMatrix();
+    if (bgCam) {
+        bgCam.aspect = window.innerWidth / window.innerHeight;
+        bgCam.updateProjectionMatrix();
+    }
     
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    if (renderer) {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
 });
 
 /** ========= EVENTOS ========= */
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("Documento cargado");
+    
     // Botón de inicio
     const startBtn = document.getElementById('startBtn');
     if (startBtn) {
@@ -1446,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', () => {
         restartBtn.onclick = restartGame;
     }
     
-    console.log("Documento cargado, listo para iniciar...");
+    console.log("Listo para iniciar... Presiona el botón 'Iniciar Experiencia VR'");
 });
     </script>
 </body>
