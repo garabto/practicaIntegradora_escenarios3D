@@ -1,248 +1,261 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mundo Virtual - Primera Persona con Joysticks</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alienrinto VR</title>
+    <link rel="icon" type="image" href="assets/icono.png">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* Estilos generales del cuerpo: tipografía Arial, fondo negro, sin márgenes */
+        body { margin:0; background:#000; color:#fff; font-family: Arial, sans-serif; overflow:hidden; }
         
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #fff;
+        /* Contenedor de información simple (esquina superior izquierda) */
+        #info { position:absolute; top:8px; left:8px; z-index:10; background:rgba(0,0,0,0.4); padding:8px; border-radius:6px; font-size: 14px; }
+        
+        /* HUD (Head-Up Display): Vida y Enemigos (esquina superior derecha) */
+        #hud { position: absolute; right: 12px; top: 12px; z-index:10; background: rgba(0,0,0,0.5); padding:10px; border-radius:6px; text-align:right; min-width:140px; }
+        
+        /* Mensajes centrales (¡GANASTE! / GAME OVER) */
+        #message { 
+            position: absolute; 
+            left:50%; 
+            top:45%; 
+            transform:translateX(-50%); 
+            z-index:12; 
+            pointer-events:none; 
+            font-size:28px; 
+            background:rgba(0,0,0,0.6); 
+            padding:12px 20px; 
+            border-radius:8px; 
+            display:none; 
+            white-space: pre-wrap; /* <-- ¡IMPORTANTE! Permite saltos de línea con \n */
+            text-align: center;
+        }
+
+         /* -------- PORTADA INICIAL -------- */
+        #portada {
+            position: fixed;
+            inset: 0;
+            background: rgb(0, 0, 0);
+            background-size: cover;
+            background-blend-mode: overlay;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-        
-        #container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        h1 {
-            margin-bottom: 10px;
-            color: #00d4ff;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-        }
-        
-        .subtitle {
-            margin-bottom: 30px;
-            color: #a0e7ff;
-        }
-        
-        #scene-container {
-            width: 100%;
-            height: 70vh;
-            position: relative;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
-            border: 2px solid #00d4ff;
-            margin-bottom: 20px;
-        }
-        
-        #renderer {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        
-        .controls-container {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto 30px;
-            padding: 0 20px;
-        }
-        
-        .joystick-container {
-            width: 200px;
-            height: 200px;
-            position: relative;
-        }
-        
-        .joystick-label {
-            margin-bottom: 10px;
-            color: #00d4ff;
-            font-weight: bold;
-        }
-        
-        .joystick-base {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.6);
-            border: 3px solid #00d4ff;
-            position: relative;
-            margin: 0 auto;
-            box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.3);
-        }
-        
-        .joystick-handle {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #00d4ff 0%, #008cff 100%);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
-            transition: transform 0.1s;
-        }
-        
-        .joystick-handle.active {
-            background: radial-gradient(circle, #ff416c 0%, #ff4b2b 100%);
-            box-shadow: 0 0 20px rgba(255, 65, 108, 0.9);
-        }
-        
-        .controls-info {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-            max-width: 800px;
-            border: 1px solid #00d4ff;
-        }
-        
-        .controls-info h3 {
-            margin-bottom: 15px;
-            color: #00d4ff;
-        }
-        
-        .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        
-        .control-item {
-            display: flex;
             align-items: center;
+            z-index: 999;
+            text-align: center;
+            padding: 20px;
+        }
+         #portada-content {
+            max-width: 700px;
+            background: rgba(0,0,0,0.6);
+            padding: 40px;
+            border-radius: 14px;
+            box-shadow: 0 0 20px rgba(0,255,150,0.4);
+            border: 1px solid #22ff88;
+        }
+
+        #portada h1 {
+            font-size: 48px;
+            color: #22ff88;
             margin-bottom: 10px;
         }
-        
-        .key {
-            display: inline-block;
-            background: rgba(0, 212, 255, 0.2);
-            border: 1px solid #00d4ff;
-            border-radius: 5px;
-            padding: 5px 10px;
-            margin-right: 10px;
-            min-width: 40px;
-            text-align: center;
+
+        #portada .sub {
+            font-size: 18px;
+            margin-bottom: 18px;
+            color: #ccc;
+        }
+
+        #portada h2 {
+            margin-top: 20px;
+            color: #22ff88;
+        }
+
+        #portada ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #portada ul li {
+            margin: 6px 0;
+        }
+
+        #portada .equipo {
+            color: #ddd;
+            line-height: 1.6;
+        }
+
+        #startBtn {
+            margin-top: 28px;
+            padding: 12px 32px;
+            font-size: 18px;
+            border: none;
+            background: #22ff88;
+            color: #000;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s ease;
             font-weight: bold;
         }
+
+        #startBtn:hover {
+            background: #44ffaa;
+        }
+
+        .vr-button {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: linear-gradient(45deg, #2196F3, #21CBF3);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .vr-button:hover {
+        background: linear-gradient(45deg, #1976D2, #1E88E5);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(33, 150, 243, 0.6);
+    }
+
+    .vr-button:active {
+        transform: translateY(0);
+    }
+
         
-        #mobile-warning {
-            display: none;
-            background: rgba(255, 100, 100, 0.2);
-            border: 1px solid #ff6464;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            max-width: 800px;
+        /* Mira del jugador (cruz en el centro) */
+        .crosshair { position: absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; z-index:9; pointer-events:none; opacity:0.85; }
+        .crosshair:before, .crosshair:after { content:""; position:absolute; background:#fff; }
+        .crosshair:before { left:50%; top:0; width:2px; height:100%; transform:translateX(-50%); }
+        .crosshair:after  { top:50%; left:0; height:2px; width:100%; transform:translateY(-50%); }
+        
+        /* Pie de página (Footer) para créditos y controles */
+        footer { 
+            position:fixed; 
+            left:0; 
+            right:0; 
+            bottom:0; 
+            background:rgba(0,0,0,0.6); 
+            color:#fff; 
+            padding:10px 16px; 
+            display:flex; 
+            justify-content:space-between; 
+            align-items:center; 
+            z-index:5; 
+            font-family: Arial, sans-serif; /* Requisito: Arial */
         }
         
-        #mobile-warning h3 {
-            color: #ff6464;
-            margin-bottom: 10px;
+        /* Estilo para el <h1> del Título */
+        footer h1 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            font-weight: bold;      /* Requisito: Negrita */
+            color: #22ff88;         /* Requisito: Color acorde (verde del portal) */
+        }
+
+        /* Estilo para el "Tablero de Teclas" */
+        #key-board {
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        #key-board strong {
+            color: #22ff88;
+            min-width: 60px;
+            display: inline-block;
+        }
+
+        /* Estilo para la info del Equipo */
+        #team-info {
+            text-align: right;
+            font-size: 13px;
+            line-height: 1.5;
         }
         
-        #status {
-            margin-top: 15px;
-            font-style: italic;
-            color: #a0e7ff;
-        }
+        canvas { display:block; }
+        #stats-container { position: absolute; top: 0; left: 0; z-index: 100; }
         
-        @media (max-width: 768px) {
-            .controls-container {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .joystick-container {
-                margin-bottom: 30px;
-            }
-            
-            #mobile-warning {
-                display: block;
-            }
-        }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/addons/": "./jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
-    <div id="container">
-        <h1>MUNDO VIRTUAL EN PRIMERA PERSONA</h1>
-        <p class="subtitle">Control mediante joysticks - Vista en primera persona</p>
-        
-        <div id="scene-container">
-            <canvas id="renderer"></canvas>
-        </div>
-        
-        <div class="controls-container">
-            <div class="joystick-container">
-                <div class="joystick-label">Movimiento</div>
-                <div class="joystick-base" id="movement-joystick-base">
-                    <div class="joystick-handle" id="movement-joystick-handle"></div>
-                </div>
-            </div>
-            
-            <div class="joystick-container">
-                <div class="joystick-label">Rotación/Vista</div>
-                <div class="joystick-base" id="rotation-joystick-base">
-                    <div class="joystick-handle" id="rotation-joystick-handle"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="mobile-warning">
-            <h3>Nota para dispositivos móviles:</h3>
-            <p>Para una mejor experiencia, se recomienda usar un dispositivo con pantalla más grande o un computador de escritorio. En móviles, puedes tocar y arrastrar los joysticks para moverte.</p>
-        </div>
-        
-        <div class="controls-info">
-            <h3>Controles Disponibles</h3>
-            <div class="controls-grid">
-                <div class="control-item">
-                    <span class="key">Joystick Izq</span>
-                    <span>Movimiento adelante/atrás y lateral</span>
-                </div>
-                <div class="control-item">
-                    <span class="key">Joystick Der</span>
-                    <span>Rotar vista y mirar alrededor</span>
-                </div>
-                <div class="control-item">
-                    <span class="key">Click</span>
-                    <span>Bloquear/desbloquear cursor</span>
-                </div>
-                <div class="control-item">
-                    <span class="key">ESPACIO</span>
-                    <span>Saltar</span>
-                </div>
-            </div>
-            <div id="status">Estado: Esperando interacción...</div>
+     <!-- Audio -->
+    <audio id="shootSound" src="assets/Disparo.mp3"></audio>
+    <audio id="enemyDeathSound" src="assets/Explosion.mp3"></audio>
+    <audio id="backgroundMusic" loop>
+    <source src="assets/musica.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- PORTADA INICIAL -->
+    <div id="portada">
+        <div id="portada-content">
+            <h1>Alienrinto VR</h1>
+            <p class="sub"> >>>>>> Experiencia VR para Meta Quest 3 <<<<<< </p>
+
+            <h2>Instrucciones VR</h2>
+            <ul>
+                <li><strong>Joystick izquierdo</strong> - Movimiento</li>
+                <li><strong>Gatillo derecho</strong> - Disparar</li>
+                <li><strong>Botón A/X</strong> - Saltar</li>
+                <li><strong>Botón de menú</strong> - Pausa/Salir VR</li>
+            </ul>
+            <h2>Objetivo:</h2>
+            <p>Llega al portal sin que los aliens te maten</p>
+
+            <h2>Integrantes del Equipo</h2>
+            <p class="equipo">
+                23200860 – Marquez Zempoalteca Judith<br>
+                23200823 – Cruz Monter Sergio Eloy<br>
+                23200904 – Veloz Pérez Mariana
+            </p>
+
+            <button id="startBtn">Iniciar Experiencia VR</button>
         </div>
     </div>
 
-    <script>
-        // main.js
+    <!-- HUD -->
+    <div id="hud">
+        <div><strong>Vida:</strong> <span id="life">100</span></div>
+        <div><strong>Enemigos:</strong> <span id="enemiesCount">0</span></div>
+        <div style="font-size:12px; margin-top:6px;">Objetivo: llegar al portal verde</div>
+    </div>
+
+    <div id="message"></div>
+
+    <!-- Información VR -->
+    <div id="vr-info" style="display: none;">
+        <h3>Controles Quest 3</h3>
+        <ul>
+            <li><strong>Joystick:</strong> Moverse</li>
+            <li><strong>Gatillo derecho:</strong> Disparar</li>
+            <li><strong>Botón A/X:</strong> Saltar</li>
+        </ul>
+    </div>
+
+
+    <div id="message"></div>
+
+    <div class="crosshair"></div>
+
+    <div id="stats-container"></div>
+
+    <script type="module">
+    // main.js
 import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
@@ -1086,6 +1099,6 @@ addEventListener('resize', ()=>{
   bgCam.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
-    </script>
+</script>
 </body>
 </html>
