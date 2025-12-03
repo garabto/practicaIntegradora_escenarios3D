@@ -641,7 +641,7 @@ function initVR() {
 // -------------------------------------------------------------------
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
-/** ========= GENERACIÓN DEL LABERINTO (con texturas) ========= */
+/** ========= GENERACIÓN DEL LABERINTO (con texturas - VERSIÓN CORREGIDA) ========= */
 function generateMaze(rows, cols, cellSize) {
     console.log(`Generando laberinto ${rows}x${cols} con texturas...`);
     
@@ -726,14 +726,15 @@ function generateMaze(rows, cols, cellSize) {
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
                 // Calcular repetición basada en el tamaño de la pared
-                const repeatX = (cellSize + CONFIG.WALL_THICKNESS) / 100;
-                const repeatY = CONFIG.WALL_HEIGHT / 100;
+                const repeatX = (cellSize + CONFIG.WALL_THICKNESS) / 50; // Ajustado
+                const repeatY = CONFIG.WALL_HEIGHT / 50; // Ajustado
                 texture.repeat.set(repeatX, repeatY);
                 console.log("Textura de paredes cargada correctamente");
             },
             undefined,
             (error) => {
                 console.warn("Error al cargar textura de paredes, usando color sólido:", error);
+                // Fallback directo
                 wallMaterial = new THREE.MeshStandardMaterial({
                     color: 0x666666,
                     roughness: 0.8,
@@ -742,11 +743,13 @@ function generateMaze(rows, cols, cellSize) {
             }
         );
         
+        // Material con textura
         wallMaterial = new THREE.MeshStandardMaterial({
             map: wallTexture,
             roughness: 0.8,
             metalness: 0.2
         });
+        
     } catch (error) {
         console.warn("Error al crear material de paredes, usando fallback:", error);
         wallMaterial = new THREE.MeshStandardMaterial({
@@ -772,52 +775,10 @@ function generateMaze(rows, cols, cellSize) {
             static: true 
         });
         
-        // Aplicar textura UV correctamente
-        if (wall.material.map) {
-            wall.geometry.computeBoundingBox();
-            const max = wall.geometry.boundingBox.max;
-            const min = wall.geometry.boundingBox.min;
-            
-            const offset = new THREE.Vector2(0, 0);
-            const repeat = new THREE.Vector2(1, 1);
-            
-            wall.geometry.faceVertexUvs[0] = [];
-            
-            const faceIndices = ['a', 'b', 'c'];
-            
-            for (let i = 0; i < wall.geometry.faces.length; i++) {
-                const face = wall.geometry.faces[i];
-                const uv = [];
-                
-                for (let j = 0; j < 3; j++) {
-                    const vertexIndex = face[faceIndices[j]];
-                    const vertex = wall.geometry.vertices[vertexIndex];
-                    
-                    let u, v;
-                    if (Math.abs(face.normal.y) > 0.5) {
-                        // Caras superior/inferior
-                        u = (vertex.x - min.x) / (max.x - min.x);
-                        v = (vertex.z - min.z) / (max.z - min.z);
-                    } else if (Math.abs(face.normal.x) > 0.5) {
-                        // Caras laterales X
-                        u = (vertex.z - min.z) / (max.z - min.z);
-                        v = (vertex.y - min.y) / (max.y - min.y);
-                    } else {
-                        // Caras laterales Z
-                        u = (vertex.x - min.x) / (max.x - min.x);
-                        v = (vertex.y - min.y) / (max.y - min.y);
-                    }
-                    
-                    uv.push(new THREE.Vector2(u, v));
-                }
-                
-                wall.geometry.faceVertexUvs[0].push(uv);
-            }
-            
-            wall.geometry.uvsNeedUpdate = true;
-        }
+        return wall;
     }
     
+    // Generar paredes del laberinto
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const cell = grid[r][c];
@@ -831,29 +792,81 @@ function generateMaze(rows, cols, cellSize) {
         }
     }
     
-    // Añadir esquinas para paredes externas
+    // Paredes externas para cerrar el laberinto
     const outerWallGeo = new THREE.BoxGeometry(
         CONFIG.WALL_THICKNESS, 
         CONFIG.WALL_HEIGHT, 
         CONFIG.WALL_THICKNESS
     );
     
-    // Paredes externas norte y sur
+    // Pared norte completa
     for (let c = 0; c < cols; c++) {
         const cx = startX + c * cellSize + cellSize / 2;
-        // Norte
-        createWall(cx, startZ - cellSize / 2, 0);
-        // Sur
-        createWall(cx, startZ + rows * cellSize - cellSize / 2, 0);
+        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
+        wall.position.set(cx, wallHeightHalf, startZ - cellSize / 2);
+        wall.receiveShadow = true;
+        wall.castShadow = true;
+        scene.add(wall);
+        
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        physicsObjects.push({ 
+            mesh: wall, 
+            boundingBox: wallBox, 
+            static: true 
+        });
     }
     
-    // Paredes externas este y oeste
+    // Pared sur completa
+    for (let c = 0; c < cols; c++) {
+        const cx = startX + c * cellSize + cellSize / 2;
+        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
+        wall.position.set(cx, wallHeightHalf, startZ + rows * cellSize - cellSize / 2);
+        wall.receiveShadow = true;
+        wall.castShadow = true;
+        scene.add(wall);
+        
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        physicsObjects.push({ 
+            mesh: wall, 
+            boundingBox: wallBox, 
+            static: true 
+        });
+    }
+    
+    // Pared oeste completa
     for (let r = 0; r < rows; r++) {
         const cz = startZ + r * cellSize + cellSize / 2;
-        // Oeste
-        createWall(startX - cellSize / 2, cz, Math.PI / 2);
-        // Este
-        createWall(startX + cols * cellSize - cellSize / 2, cz, Math.PI / 2);
+        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
+        wall.position.set(startX - cellSize / 2, wallHeightHalf, cz);
+        wall.rotation.y = Math.PI / 2;
+        wall.receiveShadow = true;
+        wall.castShadow = true;
+        scene.add(wall);
+        
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        physicsObjects.push({ 
+            mesh: wall, 
+            boundingBox: wallBox, 
+            static: true 
+        });
+    }
+    
+    // Pared este completa
+    for (let r = 0; r < rows; r++) {
+        const cz = startZ + r * cellSize + cellSize / 2;
+        const wall = new THREE.Mesh(outerWallGeo, wallMaterial);
+        wall.position.set(startX + cols * cellSize - cellSize / 2, wallHeightHalf, cz);
+        wall.rotation.y = Math.PI / 2;
+        wall.receiveShadow = true;
+        wall.castShadow = true;
+        scene.add(wall);
+        
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        physicsObjects.push({ 
+            mesh: wall, 
+            boundingBox: wallBox, 
+            static: true 
+        });
     }
     
     scene.userData.maze = { 
@@ -866,8 +879,7 @@ function generateMaze(rows, cols, cellSize) {
     };
     
     console.log(`Laberinto generado: ${rows}x${cols} celdas con texturas`);
-}
-// -------------------------------------------------------------------
+}// -------------------------------------------------------------------
 // ---------- CREACIÓN DE ENEMIGOS ----------
 // -------------------------------------------------------------------
 function spawnEnemiesInMaze(count) {
