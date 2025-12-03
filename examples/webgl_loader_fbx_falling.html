@@ -306,7 +306,6 @@
     let vrShootPressed = { left: false, right: false };
     let vrControllerHapticActuators = { left: null, right: null };
 
-
     // Elementos del DOM (HTML) para el HUD
     const lifeEl = document.getElementById('life');
     const enemiesCountEl = document.getElementById('enemiesCount');
@@ -319,8 +318,7 @@
     const playerCollider = new THREE.Box3();  // "Hitbox" (caja de colisión) del jugador
 
     // VR Variables
-    let vrActive = false;
-    let vrButton, controllerLeft, controllerRight;
+    let controllerLeft, controllerRight;
     let controllerModelFactory;
     let teleportValid = false;
     const teleportPoint = new THREE.Vector3();
@@ -339,61 +337,46 @@
     const actions = {};                 // Objeto para guardar todas las animaciones (ej. 'Running')
     let actionCurrent = null;           // Animación que se está reproduciendo ahora
     let wallMaterial;                   // Material global para los muros (eficiencia)
+    
+    let lastShootTime = 0;              // Para cooldown de disparo
+    let moveIndicator;                  // Para depuración de movimiento VR
 
     // -------------------------------------------------------------------
     // ---------- FUNCIONES DE REALIDAD VIRTUAL ----------
     // -------------------------------------------------------------------
 
-function initVR() {
-    // Habilitar WebXR
-    renderer.xr.enabled = true;
-    
-    // Verificar si WebXR está disponible
-    if (!navigator.xr) {
-        console.warn("WebXR no está disponible en este navegador");
-        return;
+    function initVR() {
+        // === RENDERER ===
+        renderer.xr.enabled = true;
+        
+        // === BOTÓN VR ===
+        const vrButton = VRButton.createButton(renderer);
+        document.body.appendChild(vrButton);
+        
+        // === VR CONTROLLERS ===
+        controllerLeft = renderer.xr.getController(0);
+        controllerRight = renderer.xr.getController(1);
+        scene.add(controllerLeft, controllerRight);
+        
+        // === MODELOS DE CONTROLADORES ===
+        controllerModelFactory = new XRControllerModelFactory();
+        
+        const gripLeft = renderer.xr.getControllerGrip(0);
+        gripLeft.add(controllerModelFactory.createControllerModel(gripLeft));
+        scene.add(gripLeft);
+        
+        const gripRight = renderer.xr.getControllerGrip(1);
+        gripRight.add(controllerModelFactory.createControllerModel(gripRight));
+        scene.add(gripRight);
+        
+        // === SISTEMA DE TELEPORTACIÓN ===
+        createTeleportSystem();
+        
+        // === EVENTOS DE DISPARO VR ===
+        setupVRShootEvents();
+        
+        console.log("VR inicializado correctamente");
     }
-    
-    // Crear botón VR
-    vrButton = VRButton.createButton(renderer);
-    vrButton.classList.add('vr-button');
-    document.body.appendChild(vrButton);
-    
-    // Crear controladores
-    controllerLeft = renderer.xr.getController(0);
-    controllerRight = renderer.xr.getController(1);
-    scene.add(controllerLeft, controllerRight);
-    
-    // Añadir ayuda visual para los controladores
-    const controllerGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.2);
-    const controllerMaterial = new THREE.MeshBasicMaterial({ color: 0x4444ff });
-    const leftController = new THREE.Mesh(controllerGeometry, controllerMaterial);
-    const rightController = new THREE.Mesh(controllerGeometry, controllerMaterial);
-    leftController.position.z = -0.1;
-    rightController.position.z = -0.1;
-    controllerLeft.add(leftController);
-    controllerRight.add(rightController);
-    
-    // Modelos de controladores (opcional)
-    controllerModelFactory = new XRControllerModelFactory();
-    const grip0 = renderer.xr.getControllerGrip(0);
-    const grip1 = renderer.xr.getControllerGrip(1);
-    grip0.add(controllerModelFactory.createControllerModel(grip0));
-    grip1.add(controllerModelFactory.createControllerModel(grip1));
-    scene.add(grip0, grip1);
-    
-    // Crear sistema de teleportación
-    createTeleportSystem();
-    
-    // Configurar eventos de disparo VR
-    setupVRShootEvents();
-    
-    // Eventos de VR
-    renderer.xr.addEventListener('sessionstart', onVRSessionStart);
-    renderer.xr.addEventListener('sessionend', onVRSessionEnd);
-    
-    console.log("VR inicializado correctamente");
-}
 
     function createTeleportSystem() {
         // Materiales para el arco de teleportación
@@ -434,20 +417,21 @@ function initVR() {
         
         // Eventos del controlador derecho (teleportación)
         controllerRight.addEventListener('selectstart', () => {
-            if (vrActive) {
+            if (renderer.xr.isPresenting) {
                 arcLine.visible = true;
                 marker.visible = true;
             }
         });
         
         controllerRight.addEventListener('selectend', () => {
-            if (vrActive && teleportValid) {
+            if (renderer.xr.isPresenting && teleportValid) {
                 // Teleportar al jugador
-                controls.getObject().position.copy(teleportPoint);
-                controls.getObject().position.y += CONFIG.PLAYER_HEIGHT / 2;
+                const playerObject = controls.getObject();
+                playerObject.position.copy(teleportPoint);
+                playerObject.position.y += CONFIG.PLAYER_HEIGHT / 2;
                 
                 // Actualizar posición de la cámara también
-                camera.position.copy(controls.getObject().position);
+                camera.position.copy(playerObject.position);
                 
                 // Vibración háptica al teleportar
                 triggerHapticFeedback('right', 0.3, 100);
@@ -458,7 +442,7 @@ function initVR() {
     }
 
     function updateTeleportArc() {
-        if (!arcLine.visible || !vrActive) return;
+        if (!arcLine.visible || !renderer.xr.isPresenting) return;
         teleportValid = false;
         
         const origin = new THREE.Vector3()
@@ -521,273 +505,274 @@ function initVR() {
     }
 
     function vrGamepadMove(dt) {
-    if (!vrActive || !renderer.xr.isPresenting) return;
-    
-    const session = renderer.xr.getSession();
-    if (!session) return;
-    
-    let totalMove = new THREE.Vector3();
-    
-    for (const src of session.inputSources) {
-        if (!src.gamepad) continue;
+        if (!renderer.xr.isPresenting) return;
         
-        // En Quest 3, los joysticks están en axes[0]/axes[1] y axes[2]/axes[3]
-        // Joystick izquierdo: axes[0] (horizontal), axes[1] (vertical)
-        // Joystick derecho: axes[2] (horizontal), axes[3] (vertical)
-        let x = 0;
-        let y = 0;
+        const session = renderer.xr.getSession();
+        if (!session) return;
+
+        let totalMove = new THREE.Vector3();
+        let hasInput = false;
+        let lastX = 0, lastY = 0;
         
-        // Usar joystick izquierdo para movimiento (axes[0] y axes[1])
-        if (src.gamepad.axes && src.gamepad.axes.length >= 2) {
-            x = src.gamepad.axes[0] || 0;  // Horizontal izquierdo
-            y = src.gamepad.axes[1] || 0;  // Vertical izquierdo (invertido)
+        for (const src of session.inputSources) {
+            if (!src.gamepad) continue;
+            
+            let x = 0;
+            let y = 0;
+            
+            if (src.gamepad.axes && src.gamepad.axes.length >= 2) {
+                x = src.gamepad.axes[0] || 0;
+                y = -(src.gamepad.axes[1] || 0);
+            }
+            
+            const deadzone = 0.15;
+            if (Math.abs(x) < deadzone) x = 0;
+            if (Math.abs(y) < deadzone) y = 0;
+            
+            if (x === 0 && y === 0) continue;
+            
+            hasInput = true;
+            lastX = x;
+            lastY = y;
+            
+            const forward = new THREE.Vector3();
+            camera.getWorldDirection(forward);
+            forward.y = 0;
+            forward.normalize();
+            
+            const right = new THREE.Vector3()
+                .crossVectors(upVector, forward)
+                .normalize();
+            
+            totalMove.addScaledVector(forward, y * CONFIG.VR_WALK_SPEED * dt * 60);
+            totalMove.addScaledVector(right, x * CONFIG.VR_STRAFE_SPEED * dt * 60);
         }
         
-        // Zona muerta
-        const deadzone = 0.15;
-        if (Math.abs(x) < deadzone) x = 0;
-        if (Math.abs(y) < deadzone) y = 0;
-        
-        if (x === 0 && y === 0) continue;
-        
-        // Calcular dirección relativa a la cámara
-        const forward = new THREE.Vector3();
-        camera.getWorldDirection(forward);
-        forward.y = 0;
-        forward.normalize();
-        
-        const right = new THREE.Vector3()
-            .crossVectors(upVector, forward)
-            .normalize();
-        
-        // Acumular movimiento
-        totalMove.addScaledVector(forward, -y * CONFIG.VR_WALK_SPEED * dt);
-        totalMove.addScaledVector(right, x * CONFIG.VR_STRAFE_SPEED * dt);
-    }
-    
-    // Solo aplicar movimiento si hay entrada
-    if (totalMove.lengthSq() > 0.001) {
-        const playerObject = controls.getObject();
-        
-        // Aplicar movimiento usando el sistema de colisiones existente
-        const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
-        playerCollider.setFromCenterAndSize(
-            playerObject.position,
-            new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
-        );
-        
-        // Verificar colisiones antes de mover
-        const futureCollider = playerCollider.clone().translate(new THREE.Vector3(totalMove.x, 0, totalMove.z));
-        let canMove = true;
-        
-        for (const obj of physicsObjects) {
-            if (futureCollider.intersectsBox(obj.boundingBox)) {
-                canMove = false;
-                break;
+        if (totalMove.lengthSq() > 0.001) {
+            const playerObject = controls.getObject();
+            
+            const playerHalfHeight = CONFIG.PLAYER_HEIGHT / 2;
+            const playerHalfWidth = CONFIG.PLAYER_WIDTH / 2;
+            
+            playerCollider.setFromCenterAndSize(
+                playerObject.position,
+                new THREE.Vector3(CONFIG.PLAYER_WIDTH, CONFIG.PLAYER_HEIGHT, CONFIG.PLAYER_WIDTH)
+            );
+            
+            let moveX = totalMove.x;
+            let moveZ = totalMove.z;
+            
+            if (Math.abs(moveX) > 0.001) {
+                const futureColliderX = playerCollider.clone().translate(new THREE.Vector3(moveX, 0, 0));
+                let canMoveX = true;
+                
+                for (const obj of physicsObjects) {
+                    if (futureColliderX.intersectsBox(obj.boundingBox)) {
+                        canMoveX = false;
+                        break;
+                    }
+                }
+                
+                if (!canMoveX) moveX = 0;
+            }
+            
+            if (Math.abs(moveZ) > 0.001) {
+                const futureColliderZ = playerCollider.clone().translate(new THREE.Vector3(0, 0, moveZ));
+                let canMoveZ = true;
+                
+                for (const obj of physicsObjects) {
+                    if (futureColliderZ.intersectsBox(obj.boundingBox)) {
+                        canMoveZ = false;
+                        break;
+                    }
+                }
+                
+                if (!canMoveZ) moveZ = 0;
+            }
+            
+            if (Math.abs(moveX) > 0.001 || Math.abs(moveZ) > 0.001) {
+                playerObject.position.x += moveX;
+                playerObject.position.z += moveZ;
+                
+                if (renderer.xr.isPresenting) {
+                    const cameraOffset = new THREE.Vector3().subVectors(camera.position, playerObject.position);
+                    playerObject.position.x += moveX;
+                    playerObject.position.z += moveZ;
+                    camera.position.copy(playerObject.position).add(cameraOffset);
+                } else {
+                    camera.position.copy(playerObject.position);
+                }
             }
         }
+
+        if (hasInput && typeof moveIndicator === 'undefined') {
+            moveIndicator = document.createElement('div');
+            moveIndicator.style.cssText = `
+                position: absolute;
+                top: 120px;
+                left: 10px;
+                background: rgba(0,0,0,0.7);
+                color: #22ff88;
+                padding: 8px;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 12px;
+                z-index: 10000;
+                pointer-events: none;
+            `;
+            document.body.appendChild(moveIndicator);
+        }
         
-        if (canMove) {
-            playerObject.position.add(totalMove);
-            camera.position.copy(playerObject.position);
+        if (moveIndicator) {
+            moveIndicator.innerHTML = `VR Mov: (${lastX.toFixed(2)}, ${lastY.toFixed(2)})<br>
+                                     Total: (${totalMove.x.toFixed(2)}, ${totalMove.z.toFixed(2)})<br>
+                                     Pos: (${controls.getObject().position.x.toFixed(1)}, 
+                                     ${controls.getObject().position.z.toFixed(1)})`;
         }
     }
-}
-    function onVRSessionStart() {
-        vrActive = true;
-        console.log("Sesión VR iniciada");
+
+    function setupVRShootEvents() {
+        controllerLeft.addEventListener('selectstart', () => {
+            if (renderer.xr.isPresenting) {
+                handleVRShoot('left');
+            }
+        });
         
-        // Desactivar controles de mouse cuando está en VR
-        if (controls) {
-            controls.unlock();
-            controls.enabled = false;
-        }
-    }
-
-    function onVRSessionEnd() {
-        vrActive = false;
-        console.log("Sesión VR finalizada");
+        controllerRight.addEventListener('squeezestart', () => {
+            if (renderer.xr.isPresenting) {
+                handleVRShoot('right');
+            }
+        });
         
-        // Reactivar controles de mouse
-        if (controls) {
-            controls.enabled = true;
-        }
-    }
-
-    // -------------------------------------------------------------------
-// ---------- FUNCIONES DE DISPARO VR ----------
-// -------------------------------------------------------------------
-
-function setupVRShootEvents() {
-    // Eventos para el controlador izquierdo (disparo principal)
-    controllerLeft.addEventListener('selectstart', () => {
-        if (vrActive) {
-            handleVRShoot('left');
-        }
-    });
-    
-    // Eventos para el controlador derecho (disparo secundario o teleport)
-    controllerRight.addEventListener('squeezestart', () => {
-        if (vrActive) {
-            handleVRShoot('right');
-        }
-    });
-    
-    // También puedes usar botones A/X y B/Y para disparar
-    controllerLeft.addEventListener('squeezestart', () => {
-        if (vrActive) {
-            handleVRShoot('left_alt');
-        }
-    });
-    
-    controllerRight.addEventListener('selectstart', () => {
-        // Solo disparar si no estamos usando teleport (arco invisible)
-        if (vrActive && !arcLine.visible) {
-            handleVRShoot('right_alt');
-        }
-    });
-}
-
-function handleVRShoot(hand) {
-    if (!vrActive || playerLife <= 0) return;
-
-    // Cooldown de disparo (300ms)
-    const now = Date.now();
-    if (now - lastShootTime < 300) return;
-    lastShootTime = now;
-    
-    // Reproducir sonido de disparo
-    shootSound.currentTime = 0;
-    shootSound.play();
-
-     // Vibración háptica
-    triggerHapticFeedback(hand === 'left' || hand === 'left_alt' ? 'left' : 'right', 0.5, 100);
-    
-    // Determinar origen del disparo según la mano
-    let shootOrigin;
-    let shootDirection;
-    
-    if (hand === 'left' || hand === 'left_alt') {
-        // Disparar desde controlador izquierdo
-        shootOrigin = new THREE.Vector3().setFromMatrixPosition(controllerLeft.matrixWorld);
-        shootDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(controllerLeft.quaternion).normalize();
-    } else {
-        // Disparar desde controlador derecho
-        shootOrigin = new THREE.Vector3().setFromMatrixPosition(controllerRight.matrixWorld);
-        shootDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(controllerRight.quaternion).normalize();
-    }
-    
-    // Realizar disparo desde la posición del controlador
-    performVRShoot(shootOrigin, shootDirection);
-}
-
-function performVRShoot(origin, direction) {
-    // Configurar raycaster para el disparo VR
-    raycaster.set(origin, direction);
-    raycaster.far = CONFIG.SHOOT_RANGE;
-    
-    // Filtrar objetos disparables
-    const shootableObjects = physicsObjects.map(p => p.mesh);
-    const hits = raycaster.intersectObjects(shootableObjects, true);
-    
-    let hitEnemy = false;
-    
-    if (hits.length > 0) {
-        const hit = hits[0];
+        controllerLeft.addEventListener('squeezestart', () => {
+            if (renderer.xr.isPresenting) {
+                handleVRShoot('left_alt');
+            }
+        });
         
-        // Buscar si el objeto golpeado es un enemigo
-        let target = hit.object;
-        while (target && !enemies.includes(target)) target = target.parent;
-        
-        if (target && target.userData && target.userData.alive) {
-            hitEnemy = true;
-            applyDamageToEnemy(target, CONFIG.SHOOT_DAMAGE);
-            
-            // Efecto visual de impacto en enemigo
-            const p = new THREE.Mesh(new THREE.SphereGeometry(4, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffff66 }));
-            p.position.copy(hit.point);
-            scene.add(p);
-            setTimeout(() => scene.remove(p), 120);
-        } else {
-            // Efecto visual de impacto en pared
-            const p = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffcc88 }));
-            p.position.copy(hit.point);
-            scene.add(p);
-            setTimeout(() => scene.remove(p), 120);
-        }
-    } else {
-        // Disparo fallido (efecto visual al final del rango)
-        const missPoint = origin.clone().add(direction.multiplyScalar(CONFIG.SHOOT_RANGE));
-        const p = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0x666666 }));
-        p.position.copy(missPoint);
-        scene.add(p);
-        setTimeout(() => scene.remove(p), 120);
-    }
-}
-
-function triggerHapticFeedback(hand, intensity, duration) {
-    // Intenta obtener el actuador háptico del controlador
-    const session = renderer.xr.getSession();
-    if (!session) return;
-    
-    let controller;
-    if (hand === 'left') {
-        controller = controllerLeft;
-    } else {
-        controller = controllerRight;
-    }
-    
-    // Buscar el actuador háptico
-    const gamepad = controller.userData.gamepad;
-    if (gamepad && gamepad.hapticActuators && gamepad.hapticActuators.length > 0) {
-        gamepad.hapticActuators[0].pulse(intensity, duration);
-    } else if (gamepad && gamepad.vibrationActuator) {
-        // Para algunos controladores (Oculus)
-        gamepad.vibrationActuator.playEffect("dual-rumble", {
-            duration: duration,
-            strongMagnitude: intensity,
-            weakMagnitude: intensity
+        controllerRight.addEventListener('selectstart', () => {
+            if (renderer.xr.isPresenting && !arcLine.visible) {
+                handleVRShoot('right_alt');
+            }
         });
     }
-}
+
+    function handleVRShoot(hand) {
+        if (!renderer.xr.isPresenting || playerLife <= 0) return;
+
+        const now = Date.now();
+        if (now - lastShootTime < 300) return;
+        lastShootTime = now;
+        
+        shootSound.currentTime = 0;
+        shootSound.play();
+
+        triggerHapticFeedback(hand === 'left' || hand === 'left_alt' ? 'left' : 'right', 0.5, 100);
+        
+        let shootOrigin;
+        let shootDirection;
+        
+        if (hand === 'left' || hand === 'left_alt') {
+            shootOrigin = new THREE.Vector3().setFromMatrixPosition(controllerLeft.matrixWorld);
+            shootDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(controllerLeft.quaternion).normalize();
+        } else {
+            shootOrigin = new THREE.Vector3().setFromMatrixPosition(controllerRight.matrixWorld);
+            shootDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(controllerRight.quaternion).normalize();
+        }
+        
+        performVRShoot(shootOrigin, shootDirection);
+    }
+
+    function performVRShoot(origin, direction) {
+        raycaster.set(origin, direction);
+        raycaster.far = CONFIG.SHOOT_RANGE;
+        
+        const shootableObjects = physicsObjects.map(p => p.mesh);
+        const hits = raycaster.intersectObjects(shootableObjects, true);
+        
+        let hitEnemy = false;
+        
+        if (hits.length > 0) {
+            const hit = hits[0];
+            
+            let target = hit.object;
+            while (target && !enemies.includes(target)) target = target.parent;
+            
+            if (target && target.userData && target.userData.alive) {
+                hitEnemy = true;
+                applyDamageToEnemy(target, CONFIG.SHOOT_DAMAGE);
+                
+                const p = new THREE.Mesh(new THREE.SphereGeometry(4, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffff66 }));
+                p.position.copy(hit.point);
+                scene.add(p);
+                setTimeout(() => scene.remove(p), 120);
+            } else {
+                const p = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffcc88 }));
+                p.position.copy(hit.point);
+                scene.add(p);
+                setTimeout(() => scene.remove(p), 120);
+            }
+        } else {
+            const missPoint = origin.clone().add(direction.multiplyScalar(CONFIG.SHOOT_RANGE));
+            const p = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0x666666 }));
+            p.position.copy(missPoint);
+            scene.add(p);
+            setTimeout(() => scene.remove(p), 120);
+        }
+    }
+
+    function triggerHapticFeedback(hand, intensity, duration) {
+        const session = renderer.xr.getSession();
+        if (!session) return;
+        
+        let controller;
+        if (hand === 'left') {
+            controller = controllerLeft;
+        } else {
+            controller = controllerRight;
+        }
+        
+        const gamepad = controller.userData.gamepad;
+        if (gamepad && gamepad.hapticActuators && gamepad.hapticActuators.length > 0) {
+            gamepad.hapticActuators[0].pulse(intensity, duration);
+        } else if (gamepad && gamepad.vibrationActuator) {
+            gamepad.vibrationActuator.playEffect("dual-rumble", {
+                duration: duration,
+                strongMagnitude: intensity,
+                weakMagnitude: intensity
+            });
+        }
+    }
 
     // -------------------------------------------------------------------
     // ---------- INICIALIZACIÓN PRINCIPAL ----------
     // -------------------------------------------------------------------
 
-    // Iniciar el juego
     init();
     animate();
 
     function init() {
-        // Configuración básica de la escena
-        clock = new THREE.Clock();          // Reloj para medir el tiempo (delta time)
-        scene = new THREE.Scene();          // La escena principal
-        scene.fog = new THREE.Fog(0xcccccc, 400, 1300); // Niebla
+        clock = new THREE.Clock();
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0xcccccc, 400, 1300);
 
-        // Cámara principal (FPS)
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 3000);
         
-        // Renderizador (dibuja la escena en el <canvas>)
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; // Activar sombras
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Mejor calidad de sombras
-        document.body.appendChild(renderer.domElement); // Añadir <canvas> al HTML
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
 
-        // Inicializar VR (debe hacerse después de crear el renderer)
         initVR();
 
-        // Medidor de FPS
         stats = new Stats();
         statsContainer.appendChild(stats.dom);
 
-        // Cámara de 3ra persona (para la esquina)
         const aspect = (window.innerWidth * 0.25) / (window.innerHeight * 0.25);
         thirdPersonCamera = new THREE.PerspectiveCamera(50, aspect, 1, 1000);
         scene.add(thirdPersonCamera);
 
-        // Carga de Texturas y Materiales
         const texLoader = new THREE.TextureLoader();
         const wallMap = texLoader.load(CONFIG.WALL_TEX);
         wallMap.wrapS = wallMap.wrapT = THREE.RepeatWrapping;
@@ -799,12 +784,10 @@ function triggerHapticFeedback(hand, intensity, duration) {
             metalness: 0.2
         });
 
-        // Carga del Modelo 3D del Jugador (FBX)
         const fbx = new FBXLoader();
-        const animLoader = new FBXLoader(); // Cargador separado para las animaciones
-        const charPath = 'models/fbx/Jab Cross.fbx'; // Modelo base (contiene la malla)
+        const animLoader = new FBXLoader();
+        const charPath = 'models/fbx/Jab Cross.fbx';
         
-        // Lista de animaciones a cargar
         const animationFiles = [
             ['Running',           'models/fbx/Running.fbx'],
             ['Running Up Stairs', 'models/fbx/Running Up Stairs.fbx'],
@@ -812,7 +795,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
             ['Walking',           'models/fbx/Walking.fbx']
         ];
 
-        // 1. Cargar el modelo principal
         fbx.load(charPath, (fbxScene) => {
             playerModel = fbxScene;
             const modelHeight = 150;
@@ -826,7 +808,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
                 }
             });
 
-            // Encontrar el hueso "Hips" (cadera)
             playerModel.traverse(c => {
                 if (c.isBone && (c.name.includes('Hips') || c.name.includes('hips') || c.name.includes('mixamorig:Hips'))) {
                     playerRootBone = c;
@@ -838,17 +819,14 @@ function triggerHapticFeedback(hand, intensity, duration) {
                 defaultRootY = playerRootBone.position.y;
             }
 
-            // 2. Crear el "reproductor" (Mixer) para este modelo
             mixer = new THREE.AnimationMixer(playerModel);
 
-            // 3. Cargar la animación que viene DENTRO del modelo principal
             if (fbxScene.animations && fbxScene.animations.length > 0) {
                 const mainClip = fbxScene.animations[0];
                 actions['Jab Cross'] = mixer.clipAction(mainClip);
                 console.log(`Animación base cargada: ${mainClip.name} (guardada como 'Jab Cross')`);
             }
 
-            // 4. Cargar todas las demás animaciones por separado
             animationFiles.forEach(([name, path]) => {
                 animLoader.load(path, (animFbx) => {
                     if (animFbx.animations && animFbx.animations.length > 0) {
@@ -859,31 +837,26 @@ function triggerHapticFeedback(hand, intensity, duration) {
                 }, undefined, err => console.warn(`Error cargando animación ${path}:`, err));
             });
 
-            // 5. Iniciar con la animación por defecto
             if (actions['Jab Cross']) {
                 playAction('Jab Cross');
             }
             
-            // 6. Añadir el modelo (invisible por ahora) a la escena
             scene.add(playerModel);
 
         }, undefined, err => console.warn('No se cargó el modelo del jugador:', err));
 
-
-        // Controles FPS (PointerLock)
         controls = new PointerLockControls(camera, renderer.domElement);
-        // Listener para bloquear el cursor al hacer clic
+        
         document.body.addEventListener('click', () => {
-            if (playerLife > 0 && !vrActive) {
-                 controls.lock(); // Bloquear cursor
+            if (playerLife > 0 && !renderer.xr.isPresenting) {
+                 controls.lock();
             }
         });
         controls.addEventListener('lock', () => showMessage('Controles desbloqueados', 1500));
         controls.addEventListener('unlock', () => showMessage('Controles bloqueados', 1500));
-        // Añadir el "objeto" de controles (la cámara) a la escena
+        
         scene.add(controls.getObject());
 
-        // Configuración de Luces
         const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
         scene.add(hemi);
         const sun = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -893,7 +866,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
         sun.shadow.mapSize.height = 1024;
         scene.add(sun);
 
-        // Piso
         const floorMap = texLoader.load(CONFIG.FLOOR_TEX);
         floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
         floorMap.repeat.set(12, 12);
@@ -903,19 +875,16 @@ function triggerHapticFeedback(hand, intensity, duration) {
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // Cielo (HDR)
         new RGBELoader().load(CONFIG.HDR_PATH, tex => {
             tex.mapping = THREE.EquirectangularReflectionMapping;
             scene.environment = tex;
             scene.background = tex;
         }, undefined, err => console.warn('HDR no cargado:', err));
 
-        // --- Creación del Nivel ---
         generateMaze(CONFIG.MAZE_ROWS, CONFIG.MAZE_COLS, CONFIG.CELL_SIZE);
         spawnEnemiesInMaze(CONFIG.ENEMY_COUNT);
         createGoalAtEnd();
         
-        // --- Posicionar al Jugador ---
         const maze = scene.userData.maze;
         if (maze) {
             camera.position.set(
@@ -926,7 +895,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
             controls.getObject().position.copy(camera.position);
         }
 
-        // --- Event Listeners ---
         window.addEventListener('resize', onWindowResize);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
@@ -942,10 +910,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
             }, 500);
         });
     }
-
-    // -------------------------------------------------------------------
-    // ---------- FUNCIONES DEL LABERINTO Y ENEMIGOS ----------
-    // -------------------------------------------------------------------
 
     function generateMaze(rows, cols, cellSize) {
         const grid = [];
@@ -1051,24 +1015,15 @@ function triggerHapticFeedback(hand, intensity, duration) {
         scene.userData.goal = { mesh: portal, position: new THREE.Vector3(gx,0,gz) };
     }
 
-    // -------------------------------------------------------------------
-    // ---------- FUNCIONES DE DISPARO Y DAÑO ----------
-    // -------------------------------------------------------------------
-
-    // Agrega esta variable al inicio con las otras
-    let lastShootTime = 0;
-
     function handleShoot() {
-        if (!controls.isLocked && !vrActive) return;
+        if (!controls.isLocked && !renderer.xr.isPresenting) return;
 
-        // Cooldown de disparo (300ms)
         const now = Date.now();
         if (now - lastShootTime < 300) return;
         lastShootTime = now;
 
-         // Reproduce sonido de disparo
-            shootSound.currentTime = 0; // reinicia para disparos rápidos
-            shootSound.play();
+        shootSound.currentTime = 0;
+        shootSound.play();
 
         const origin = camera.position;
         const dir = new THREE.Vector3();
@@ -1131,10 +1086,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
         updateEnemiesHUD();
     }
 
-    // -------------------------------------------------------------------
-    // ---------- MANEJO DE ENTRADAS ----------
-    // -------------------------------------------------------------------
-
     function onKeyDown(e) { 
         keys[e.code] = true;
         
@@ -1150,10 +1101,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
     function onKeyUp(e) { 
         keys[e.code] = false; 
     }
-
-    // -------------------------------------------------------------------
-    // ---------- HUD Y MENSAJES ----------
-    // -------------------------------------------------------------------
     
     function updateEnemiesHUD() {
         const alive = enemies.filter(e => e.userData && e.userData.alive).length;
@@ -1165,10 +1112,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
         messageEl.innerHTML = text;
         if (ms > 0) setTimeout(() => { messageEl.style.display = 'none'; }, ms);
     }
-
-    // -------------------------------------------------------------------
-    // ---------- FÍSICA Y IA ----------
-    // -------------------------------------------------------------------
 
     function stepPhysics(dt) {
         const playerPos = camera.position;
@@ -1209,10 +1152,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
             }
         }
     }
-
-    // -------------------------------------------------------------------
-    // ---------- ESTADO DEL JUGADOR ----------
-    // -------------------------------------------------------------------
     
     function onPlayerDead() {
         showMessage('- GAME OVER -\n<span style="font-size: 18px">Reinicia la página para volver a jugar</span>', 10000);
@@ -1240,12 +1179,8 @@ function triggerHapticFeedback(hand, intensity, duration) {
         actionCurrent.name = name;
     }
 
-    // -------------------------------------------------------------------
-    // ---------- MOVIMIENTO DEL JUGADOR ----------
-    // -------------------------------------------------------------------
-
     function updatePlayerMovement(dt) {
-        if (!controls.isLocked && !vrActive) return;
+        if (!controls.isLocked && !renderer.xr.isPresenting) return;
 
         const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? CONFIG.PLAYER_SPRINT_SPEED : CONFIG.PLAYER_SPEED;
 
@@ -1330,90 +1265,89 @@ function triggerHapticFeedback(hand, intensity, duration) {
         }
     }
 
-    // -------------------------------------------------------------------
-    // ---------- LOOP PRINCIPAL ----------
-    // -------------------------------------------------------------------
-
     function animate() {
-        requestAnimationFrame(animate);
-        
+        if (renderer.xr.isPresenting) {
+            renderer.setAnimationLoop(function() {
+                updateGameLoop();
+            });
+        } else {
+            requestAnimationFrame(animate);
+            updateGameLoop();
+        }
+    }
+
+    function updateGameLoop() {
         const dt = clock.getDelta();
-    
-        // 1. Actualizar Lógica
+        
+        if (mixer) mixer.update(dt);
+        
         if (playerLife > 0) {
-            updatePlayerMovement(dt);
-            stepPhysics(dt);
-            
-            // Actualizar movimiento VR si está activo
-            if (vrActive) {
+            if (renderer.xr.isPresenting) {
                 vrGamepadMove(dt);
                 updateTeleportArc();
+            } else {
+                updatePlayerMovement(dt);
             }
+            stepPhysics(dt);
         }
-        if (mixer) mixer.update(dt);
-    
-        // 2. Sincronizar modelo 3D con la cámara FPS
+        
         if (playerModel) {
             playerModel.position.copy(camera.position);
             playerModel.quaternion.copy(camera.quaternion);
             playerModel.position.y -= CONFIG.PLAYER_HEIGHT / 2 - 2; 
         }
     
-        // 3. Sincronizar la cámara de tercera persona
-        if (playerModel && thirdPersonCamera) {
+        if (playerModel && thirdPersonCamera && !renderer.xr.isPresenting) {
             const offset = new THREE.Vector3(0, 40, 60);
             offset.applyQuaternion(playerModel.quaternion);
             thirdPersonCamera.position.copy(playerModel.position).add(offset);
             thirdPersonCamera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 20, 0)));
         }
     
-        // 4. Renderizado
-        renderer.autoClear = false;
-        renderer.clear();
+        if (!renderer.xr.isPresenting) {
+            renderer.autoClear = false;
+            renderer.clear();
 
-        let bobOffset = 0;
-        if (playerRootBone && playerModel && playerLife > 0) {
-            const currentRootY = playerRootBone.position.y;
-            bobOffset = (currentRootY - defaultRootY) * playerModel.scale.y; 
-        }
-    
-        // --- RENDER 1: Vista Principal ---
-        if (playerModel) playerModel.visible = false;
+            let bobOffset = 0;
+            if (playerRootBone && playerModel && playerLife > 0) {
+                const currentRootY = playerRootBone.position.y;
+                bobOffset = (currentRootY - defaultRootY) * playerModel.scale.y; 
+            }
         
-        renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-        renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
-        renderer.setScissorTest(true);
-        
-        camera.position.y += bobOffset; 
-        renderer.render(scene, camera);
-        camera.position.y -= bobOffset;
-
-        // --- RENDER 2: Vista de Esquina ---
-        if (playerModel && thirdPersonCamera) {
-            playerModel.visible = true;
-
-            const w = window.innerWidth * 0.20;
-            const h = window.innerHeight * 0.20;
-            const x = window.innerWidth - w - 20;
-            const y = 20;
+            if (playerModel) playerModel.visible = false;
             
-            renderer.clearDepth();
-            
-            renderer.setViewport(x, y, w, h);
-            renderer.setScissor(x, y, w, h);
+            renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+            renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
             renderer.setScissorTest(true);
+            
+            camera.position.y += bobOffset; 
+            renderer.render(scene, camera);
+            camera.position.y -= bobOffset;
 
-            renderer.render(scene, thirdPersonCamera);
+            if (playerModel && thirdPersonCamera) {
+                playerModel.visible = true;
+
+                const w = window.innerWidth * 0.20;
+                const h = window.innerHeight * 0.20;
+                const x = window.innerWidth - w - 20;
+                const y = 20;
+                
+                renderer.clearDepth();
+                
+                renderer.setViewport(x, y, w, h);
+                renderer.setScissor(x, y, w, h);
+                renderer.setScissorTest(true);
+
+                renderer.render(scene, thirdPersonCamera);
+            }
+            
+            renderer.autoClear = true;
+        } else {
+            renderer.render(scene, camera);
         }
         
-        renderer.autoClear = true;
-    
         stats.update();
     }
-
-    // -------------------------------------------------------------------
-    // ---------- UTILIDADES ----------
-    // -------------------------------------------------------------------
     
     function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -1428,7 +1362,6 @@ function triggerHapticFeedback(hand, intensity, duration) {
 
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
-
 </script>
 </body>
 </html>
