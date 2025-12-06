@@ -12,141 +12,39 @@
         /* Contenedor de información simple (esquina superior izquierda) */
         #info { position:absolute; top:8px; left:8px; z-index:10; background:rgba(0,0,0,0.4); padding:8px; border-radius:6px; font-size: 14px; }
         
-        /* HUD (Head-Up Display): Vida y Enemigos - POSICIÓN VISIBLE EN VR */
+        /* UI: contadores */
         #hud { 
-            position: fixed; /* Cambiado de absolute a fixed para VR */
-            left: 30px; 
-            top: 30px; /* Cambiado de bottom a top para mejor visibilidad en VR */
-            z-index: 10000; /* Prioridad muy alta para VR */
-            background: rgba(0, 0, 0, 0.9); /* Fondo más oscuro para mejor contraste */
-            padding: 25px; 
-            border-radius: 15px; 
-            text-align: left; 
-            min-width: 250px; 
+            position: fixed;
+            left: 20px; 
+            top: 20px;
+            z-index: 10000;
             display: none;
-            border: 4px solid #22ff88;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .badge {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #ff4444;
+            border-radius: 12px;
+            padding: 12px 20px;
+            min-width: 180px;
             backdrop-filter: blur(10px);
-            font-size: 28px; /* Tamaño aumentado para mejor lectura en VR */
-            box-shadow: 0 0 30px rgba(34, 255, 136, 0.8);
-            font-family: Arial, sans-serif;
-            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
         }
 
-        #hud div {
-            margin: 15px 0;
-            display: flex;
-            align-items: center;
+        .badge span {
+            color: #ff8888;
+            font-size: 16px;
+            font-weight: normal;
+            margin-right: 10px;
         }
 
-        #hud strong {
-            color: #22ff88;
-            margin-right: 20px;
-            min-width: 140px;
-            font-size: 24px;
-        }
-
-        #hud span {
+        .badge b {
             color: #fff;
-            font-weight: bold;
-            font-size: 32px;
-            text-shadow: 0 0 10px rgba(34, 255, 136, 0.7);
-        }
-
-        /* Barra de vida visual */
-        .life-bar-container {
-            width: 100%;
-            height: 30px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            margin-top: 10px;
-            overflow: hidden;
-            border: 3px solid rgba(34, 255, 136, 0.4);
-        }
-
-        .life-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #22ff88, #00ff00);
-            border-radius: 5px;
-            width: 100%;
-            transition: width 0.5s ease;
-            box-shadow: 0 0 15px rgba(34, 255, 136, 0.5);
-        }
-
-        /* Indicador de enemigos */
-        .enemy-indicator {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            background: #ff4444;
-            border-radius: 50%;
-            margin-left: 15px;
-            animation: pulse-red 1.5s infinite;
-            box-shadow: 0 0 15px #ff4444;
-        }
-
-        @keyframes pulse-red {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        /* Indicador de objetivo */
-        .objective-indicator {
-            display: flex;
-            align-items: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid rgba(34, 255, 136, 0.4);
-        }
-
-        .objective-icon {
-            width: 24px;
-            height: 24px;
-            background: #22ff88;
-            border-radius: 50%;
-            margin-right: 15px;
-            animation: pulse-green 2s infinite;
-        }
-
-        @keyframes pulse-green {
-            0% { box-shadow: 0 0 10px #22ff88; }
-            50% { box-shadow: 0 0 25px #22ff88; }
-            100% { box-shadow: 0 0 10px #22ff88; }
-        }
-
-        .objective-text {
             font-size: 20px;
-            color: #aaffcc;
             font-weight: bold;
-        }
-
-        /* Versión VR del HUD - Más grande y visible */
-        #hud.vr-mode {
-            background: rgba(0, 0, 0, 0.95);
-            padding: 30px;
-            min-width: 300px;
-            border-width: 5px;
-            left: 40px;
-            top: 40px;
-            font-size: 32px;
-            box-shadow: 0 0 40px rgba(34, 255, 136, 0.9);
-        }
-
-        #hud.vr-mode div {
-            margin: 20px 0;
-        }
-
-        #hud.vr-mode strong {
-            font-size: 28px;
-            min-width: 160px;
-        }
-
-        #hud.vr-mode span {
-            font-size: 36px;
-        }
-
-        #hud.vr-mode .objective-text {
-            font-size: 22px;
+            text-shadow: 0 0 10px rgba(255, 68, 68, 0.7);
         }
         
         /* Mensajes centrales (¡GANASTE! / GAME OVER) */
@@ -155,14 +53,14 @@
             left:50%; 
             top:45%; 
             transform:translateX(-50%); 
-            z-index:12000; /* Prioridad más alta que el HUD */
+            z-index:12000;
             pointer-events:none; 
             font-size:28px; 
             background:rgba(0,0,0,0.8); 
             padding:12px 20px; 
             border-radius:8px; 
             display:none; 
-            white-space: pre-wrap; /* <-- ¡IMPORTANTE! Permite saltos de línea con \n */
+            white-space: pre-wrap;
             text-align: center;
             font-size: 36px;
             font-weight: bold;
@@ -309,7 +207,7 @@
             justify-content:space-between; 
             align-items:center; 
             z-index:5; 
-            font-family: Arial, sans-serif; /* Requisito: Arial */
+            font-family: Arial, sans-serif;
             display: none;
         }
         
@@ -317,8 +215,8 @@
         footer h1 {
             margin: 0 0 5px 0;
             font-size: 20px;
-            font-weight: bold;      /* Requisito: Negrita */
-            color: #22ff88;         /* Requisito: Color acorde (verde del portal) */
+            font-weight: bold;
+            color: #22ff88;
         }
 
         /* Estilo para el "Tablero de Teclas" */
@@ -381,120 +279,63 @@
             display: none; 
         }
 
-        /* LETRERO AL ENTRAR A VR - DURACIÓN PROLONGADA (10 MINUTOS) */
+        /* Letrero VR simplificado */
         #vr-enter-sign {
-            position: fixed; /* Cambiado a fixed para VR */
+            position: fixed;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.97);
+            background: rgba(0, 0, 0, 0.95);
             color: #fff;
-            padding: 50px 70px;
-            border-radius: 25px;
-            border: 6px solid #22ff88;
-            z-index: 20000; /* Prioridad máxima */
+            padding: 30px 40px;
+            border-radius: 20px;
+            border: 4px solid #ff4444;
+            z-index: 20000;
             text-align: center;
             font-family: Arial, sans-serif;
-            box-shadow: 0 0 60px rgba(34, 255, 136, 0.95);
+            box-shadow: 0 0 40px rgba(255, 68, 68, 0.7);
             display: none;
-            width: 450px;
+            width: 400px;
             max-width: 90vw;
-            backdrop-filter: blur(15px);
+            backdrop-filter: blur(10px);
         }
         
         #vr-enter-sign h2 {
-            color: #22ff88;
-            margin: 0 0 30px 0;
-            font-size: 36px;
+            color: #ff4444;
+            margin: 0 0 20px 0;
+            font-size: 32px;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 20px rgba(34, 255, 136, 0.9);
+            letter-spacing: 1px;
         }
         
         #vr-enter-sign .stats {
-            font-size: 32px;
-            margin: 25px 0;
-            line-height: 1.8;
+            font-size: 24px;
+            margin: 15px 0;
+            line-height: 1.6;
             font-weight: bold;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            border: 2px solid rgba(34, 255, 136, 0.3);
         }
         
         #vr-enter-sign .stats span {
-            color: #22ff88;
+            color: #ff8888;
             font-weight: bold;
-            text-shadow: 0 0 15px rgba(34, 255, 136, 0.8);
         }
         
-        #vr-enter-sign .tip {
-            font-size: 20px;
-            color: #ccc;
-            margin-top: 30px;
-            font-style: italic;
-            line-height: 1.6;
-        }
-        
-        /* Contador de tiempo */
-        #vr-timer {
-            font-size: 22px;
-            color: #22ff88;
-            margin-top: 20px;
-            font-weight: bold;
-            padding: 10px 20px;
-            background: rgba(34, 255, 136, 0.1);
-            border-radius: 8px;
-            display: inline-block;
-            animation: pulse-timer 2s infinite;
-        }
-        
-        @keyframes pulse-timer {
-            0% { box-shadow: 0 0 10px rgba(34, 255, 136, 0.5); }
-            50% { box-shadow: 0 0 20px rgba(34, 255, 136, 0.8); }
-            100% { box-shadow: 0 0 10px rgba(34, 255, 136, 0.5); }
-        }
-        
-        /* Botón para cerrar letrero */
         #close-vr-sign {
-            margin-top: 30px;
-            padding: 12px 40px;
-            font-size: 18px;
+            margin-top: 25px;
+            padding: 10px 30px;
+            font-size: 16px;
             border: none;
-            background: #22ff88;
+            background: #ff4444;
             color: #000;
             border-radius: 8px;
             cursor: pointer;
             transition: 0.3s ease;
             font-weight: bold;
-            box-shadow: 0 0 15px rgba(34, 255, 136, 0.7);
         }
         
         #close-vr-sign:hover {
-            background: #44ffaa;
-            transform: translateY(-2px);
-            box-shadow: 0 0 25px rgba(34, 255, 136, 0.9);
+            background: #ff6666;
         }
-        
-        #close-vr-sign:active {
-            transform: translateY(0);
-        }
-        
-        /* Indicador de que el HUD está activo */
-        .hud-active-indicator {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(34, 255, 136, 0.2);
-            color: #22ff88;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            z-index: 10001;
-            display: none;
-            border: 1px solid #22ff88;
-        }
-        
     </style>
 
     <!-- Importar Three.js desde CDN -->
@@ -512,7 +353,6 @@
     <!-- Audio -->
     <audio id="shootSound" src="assets/Disparo.mp3"></audio>
     <audio id="explosionSound" src="assets/Explosion.mp3"></audio>
-    <audio id="enemyDeathSound" src="assets/Muerte_enemigos.mp3"></audio>
     <audio id="backgroundMusic" loop>
         <source src="assets/musica.mp3" type="audio/mpeg">
     </audio>
@@ -531,7 +371,7 @@
                 <li><strong>Botón de menú</strong> - Pausa/Salir VR</li>
             </ul>
             <h2>Objetivo:</h2>
-            <p>Llega al portal sin que los aliens te maten</p>
+            <p>Llega al portal sin morir en el intento</p>
 
             <h2>Integrantes del Equipo</h2>
             <p class="equipo">
@@ -544,28 +384,10 @@
         </div>
     </div>
 
-    <!-- HUD - AHORA SIEMPRE VISIBLE EN VR -->
+    <!-- UI: contadores -->
     <div id="hud">
-        <div>
-            <strong>VIDA:</strong> 
-            <span id="life">100</span>
-            <div class="enemy-indicator"></div>
-        </div>
-        
-        <div class="life-bar-container">
-            <div id="life-bar" class="life-bar"></div>
-        </div>
-        
-        <div>
-            <strong>ENEMIGOS:</strong> 
-            <span id="enemiesCount">0/8</span>
-            <div class="enemy-indicator"></div>
-        </div>
-        
-        <div class="objective-indicator">
-            <div class="objective-icon"></div>
-            <div class="objective-text">Llegar al portal verde</div>
-        </div>
+        <div class="badge"><span>Total enemigos:</span> <b id="totalEnemies">0</b></div>
+        <div class="badge"><span>Eliminados:</span> <b id="hitEnemies">0</b></div>
     </div>
 
     <!-- Mensajes -->
@@ -585,36 +407,19 @@
     <!-- Mira -->
     <div class="crosshair"></div>
 
-    <!-- Indicador de HUD activo -->
-    <div class="hud-active-indicator">HUD ACTIVO</div>
-
-    <!-- Letrero VR temporal - DURACIÓN PROLONGADA -->
+    <!-- Letrero VR temporal -->
     <div id="vr-enter-sign">
         <h2>MODO VR ACTIVADO</h2>
         
         <div class="stats">
-            Vida actual: <span id="vr-life">100</span>
+            Enemigos: <span id="vr-total">0</span> / <span id="vr-hit">0</span>
         </div>
         
-        <div class="stats">
-            Enemigos: <span id="vr-enemies">8</span>
+        <div class="stats" style="margin-top: 25px;">
+            Objetivo: Encuentra y destruye a todos los enemigos
         </div>
         
-        <div class="tip">
-            El HUD está ahora visible en la esquina<br>
-            superior izquierda con tu información
-        </div>
-        
-        <div id="vr-timer">
-            Tiempo restante: <span id="timer-minutes">10</span>:<span id="timer-seconds">00</span>
-        </div>
-        
-        <div class="tip" style="margin-top: 20px; color: #88ffaa; font-size: 18px;">
-            Este letrero se cerrará automáticamente en 10 minutos<br>
-            o puedes cerrarlo manualmente
-        </div>
-        
-        <button id="close-vr-sign">Cerrar Letrero</button>
+        <button id="close-vr-sign">Continuar</button>
     </div>
 
     <!-- Canvas para Three.js -->
@@ -633,7 +438,7 @@ const CONFIG = {
     WALL_THICKNESS: 8,
     
     // Enemigos
-    ENEMY_COUNT: 8,
+    ENEMY_COUNT: 15,
     ENEMY_HEALTH: 50,
     ENEMY_SPEED_MIN: 0.8,
     ENEMY_SPEED_MAX: 1.6,
@@ -644,7 +449,6 @@ const CONFIG = {
     // Texturas
     FLOOR_TEX: 'models/rgbe/piso.jpg',
     WALL_TEX: 'models/rgbe/paredes.jpg',
-    BACKGROUND_TEX: 'models/rgbe/fondo.hdr',
     
     // VR
     PLAYER_RADIUS: 0.35,
@@ -652,14 +456,11 @@ const CONFIG = {
     VR_STRAFE_SPEED: 4.8,
     
     // Otros
-    FOG_DENSITY: 0.028,
+    FOG_DENSITY: 0.005, // BRUMA MUY CLARA PARA DÍA
     ARC_STEPS: 40,
     ARC_SPEED: 7.5,
     ARC_GRAVITY: 9.8,
-    MAX_SLOPE_DEG: 45,
-    
-    // TIEMPO DEL LETRERO VR (10 MINUTOS EN SEGUNDOS)
-    VR_SIGN_DURATION: 600 // 10 minutos = 600 segundos
+    MAX_SLOPE_DEG: 45
 };
 
 // Importar módulos necesarios
@@ -683,8 +484,11 @@ let arcPointsBuf;
 let arcMatOK, arcMatBAD, arcGeo;
 let vrButton;
 let isInVRMode = false;
-let vrSignTimer = null;
-let remainingTime = CONFIG.VR_SIGN_DURATION;
+
+// UI Elements
+const hudTotal = document.getElementById('totalEnemies');
+const hudHit = document.getElementById('hitEnemies');
+let hitCount = 0;
 
 /** ========= INICIALIZAR RENDERER ========= */
 function initRenderer() {
@@ -717,8 +521,8 @@ function initRenderer() {
 function initScenes() {
     // Escena principal
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x06101a);
-    scene.fog = new THREE.FogExp2(0x06101a, CONFIG.FOG_DENSITY);
+    scene.background = new THREE.Color(0x87CEEB); // Color celeste para día
+    scene.fog = new THREE.FogExp2(0xD8EFFF, CONFIG.FOG_DENSITY); // BRUMA AZUL MUY CLARA
     
     // Escena de fondo
     bgScene = new THREE.Scene();
@@ -733,25 +537,25 @@ function initScenes() {
     console.log("Escenas inicializadas");
 }
 
-/** ========= INICIALIZAR LUCES - TEMÁTICA ALIENÍGENA ========= */
+/** ========= INICIALIZAR LUCES - DÍA BRILLANTE (11-12 am) ========= */
 function initLights() {
-    // Luz ambiental alienígena (verde/azul)
-    const ambientLight = new THREE.AmbientLight(0x223344, 0.3);
+    // Luz ambiental diurna muy brillante
+    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.8); // MUY BRILLANTE PARA DÍA
     scene.add(ambientLight);
     
-    // Luz hemisférica con tonos alienígenas
-    hemiLight = new THREE.HemisphereLight(0x4477aa, 0x112233, 0.4);
+    // Luz hemisférica para día
+    hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x90EE90, 1.0); // Cielo azul, suelo verde claro
     scene.add(hemiLight);
     
-    // Luz direccional principal (como luz de luna alienígena)
-    mainLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+    // Luz direccional principal (sol del mediodía)
+    mainLight = new THREE.DirectionalLight(0xFFF8DC, 1.5); // Color cálido de sol, muy brillante
     mainLight.castShadow = true;
     mainLight.shadow.mapSize.set(1024, 1024);
     mainLight.shadow.camera.near = 0.5;
     mainLight.shadow.camera.far = 500;
-    mainLight.position.set(30, 50, 30);
+    mainLight.position.set(50, 100, 50); // Sol muy alto (mediodía)
     
-    // Configurar sombras
+    // Configurar sombras (sombras cortas para mediodía)
     mainLight.shadow.camera.left = -100;
     mainLight.shadow.camera.right = 100;
     mainLight.shadow.camera.top = 100;
@@ -760,60 +564,37 @@ function initLights() {
     
     scene.add(mainLight);
     
-    // Luz de neón/portal (efecto especial)
+    // Luz del portal (mantener)
     const portalLight = new THREE.PointLight(0x22ff88, 1.5, 200);
     portalLight.position.set(0, 20, 0);
     scene.add(portalLight);
     
-    // Luces puntuales para ambiente (efecto de laboratorio alienígena)
-    for (let i = 0; i < 4; i++) {
-        const pointLight = new THREE.PointLight(0x4477ff, 0.5, 150);
-        const angle = (i / 4) * Math.PI * 2;
-        pointLight.position.set(
-            Math.cos(angle) * 200,
-            30,
-            Math.sin(angle) * 200
-        );
-        scene.add(pointLight);
-    }
-    
-    console.log("Iluminación de temática alienígena inicializada");
+    console.log("Iluminación diurna brillante (11-12 am) inicializada");
 }
 
 /** ========= INICIALIZAR CIELO ========= */
 function initSky() {
     try {
-        // Cargar HDR como fondo
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(CONFIG.BACKGROUND_TEX, (texture) => {
-            // Configurar la textura HDR
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            texture.encoding = THREE.sRGBEncoding;
-            
-            // Usar como fondo de la escena principal
-            scene.background = texture;
-            scene.environment = texture; // Para reflexiones
-            
-            // Crear skybox más simple
-            const skyGeo = new THREE.SphereGeometry(1000, 60, 40);
-            const skyMat = new THREE.MeshBasicMaterial({
-                map: texture,
-                side: THREE.BackSide
-            });
-            
-            skyMesh = new THREE.Mesh(skyGeo, skyMat);
-            skyMesh.renderOrder = -2;
-            bgScene.add(skyMesh);
-            
-            console.log("Fondo HDR cargado correctamente");
-        }, undefined, (error) => {
-            console.error("Error al cargar HDR:", error);
-            // Fallback a color sólido
-            scene.background = new THREE.Color(0x87CEEB);
+        // Usar color celeste para simular día brillante
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.environment = null;
+        
+        // Crear cielo diurno simple
+        const skyGeo = new THREE.SphereGeometry(1000, 32, 32);
+        const skyMat = new THREE.MeshBasicMaterial({
+            color: 0x87CEEB,
+            side: THREE.BackSide
         });
         
-        // Estrellas simplificadas (mantener como complemento)
-        const starCount = 1000;
+        skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        skyMesh.renderOrder = -2;
+        bgScene.add(skyMesh);
+        
+        // Crear nubes simples para ambiente diurno
+        createClouds();
+        
+        // Estrellas (muy tenues para día)
+        const starCount = 100; // Muy pocas para día
         const starPositions = new Float32Array(starCount * 3);
         for (let i = 0; i < starCount; i++) {
             const r = 900 + Math.random() * 200;
@@ -827,12 +608,12 @@ function initSky() {
         const starGeo = new THREE.BufferGeometry();
         starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
         const starMat = new THREE.PointsMaterial({
-            size: 1.5,
+            size: 1.0,
             sizeAttenuation: false,
-            color: 0xffffff,
+            color: 0xFFFFFF,
             fog: false,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.05 // CASI INVISIBLES PARA DÍA
         });
         
         starField = new THREE.Points(starGeo, starMat);
@@ -841,7 +622,53 @@ function initSky() {
         
     } catch (error) {
         console.error("Error al inicializar cielo:", error);
-        scene.background = new THREE.Color(0x06101a);
+        scene.background = new THREE.Color(0x87CEEB);
+    }
+}
+
+/** ========= CREAR NUBES ========= */
+function createClouds() {
+    const cloudCount = 20; // Más nubes para día
+    
+    for (let i = 0; i < cloudCount; i++) {
+        const cloudGroup = new THREE.Group();
+        
+        // Crear varias esferas para formar una nube
+        for (let j = 0; j < 6; j++) {
+            const size = 20 + Math.random() * 15;
+            const cloudGeo = new THREE.SphereGeometry(size, 8, 8);
+            const cloudMat = new THREE.MeshLambertMaterial({
+                color: 0xFFFFFF,
+                transparent: true,
+                opacity: 0.8 // Nubes más opacas para día
+            });
+            
+            const cloudPart = new THREE.Mesh(cloudGeo, cloudMat);
+            cloudPart.position.set(
+                (Math.random() - 0.5) * 40,
+                (Math.random() - 0.5) * 15,
+                (Math.random() - 0.5) * 40
+            );
+            cloudGroup.add(cloudPart);
+        }
+        
+        // Posicionar nube aleatoriamente en el cielo
+        const radius = 300 + Math.random() * 200;
+        const angle = Math.random() * Math.PI * 2;
+        const height = 150 + Math.random() * 150; // Nubes más altas para día
+        
+        cloudGroup.position.set(
+            Math.cos(angle) * radius,
+            height,
+            Math.sin(angle) * radius
+        );
+        
+        bgScene.add(cloudGroup);
+        
+        // Animación simple de nubes
+        cloudGroup.userData.speed = 0.05 + Math.random() * 0.1;
+        cloudGroup.userData.angle = angle;
+        cloudGroup.userData.radius = radius;
     }
 }
 
@@ -896,8 +723,8 @@ function shoot() {
                     explosionSound.play().catch(e => console.log('Error al reproducir explosión:', e));
                 }
                 
-                // Efecto visual de daño
-                enemy.material.emissive.setHex(0xff0000);
+                // Efecto visual de daño (cubo se vuelve blanco momentáneamente)
+                enemy.material.emissive.setHex(0xffffff);
                 setTimeout(() => {
                     if (enemy.material) {
                         enemy.material.emissive.setHex(0x220000);
@@ -915,6 +742,13 @@ function shoot() {
                         deathSound.currentTime = 0;
                         deathSound.play().catch(e => console.log('Error al reproducir muerte:', e));
                     }
+                    
+                    // Actualizar contador
+                    hitCount++;
+                    updateHUD();
+                    
+                    // Crear partículas de muerte
+                    spawnParticles(enemy.position.clone());
                 }
                 
                 // Actualizar HUD
@@ -922,6 +756,46 @@ function shoot() {
             }
         }
     }
+}
+
+/** ========= CREAR PARTÍCULAS DE MUERTE ========= */
+function spawnParticles(position) {
+    const particleCount = 20;
+    const particleGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = position.x + (Math.random() - 0.5) * 10;
+        positions[i * 3 + 1] = position.y + (Math.random() - 0.5) * 10;
+        positions[i * 3 + 2] = position.z + (Math.random() - 0.5) * 10;
+        
+        // Colores rojos para enemigos
+        colors[i * 3] = 0.8 + Math.random() * 0.2; // Rojo
+        colors[i * 3 + 1] = Math.random() * 0.2; // Poco verde
+        colors[i * 3 + 2] = Math.random() * 0.2; // Poco azul
+    }
+    
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    
+    const particleMat = new THREE.PointsMaterial({
+        size: 2.0,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.8,
+        sizeAttenuation: true
+    });
+    
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+    
+    // Remover partículas después de un tiempo
+    setTimeout(() => {
+        scene.remove(particles);
+        particleGeo.dispose();
+        particleMat.dispose();
+    }, 1000);
 }
 
 /** ========= CONTROL DE DISPARO EN VR ========= */
@@ -974,7 +848,6 @@ function initVR() {
         vrButton.addEventListener('click', () => {
             setTimeout(() => {
                 if (renderer.xr.isPresenting) {
-                    // Forzar mostrar el letrero después de 1 segundo
                     setTimeout(() => {
                         showVREnterSign();
                     }, 1000);
@@ -1066,7 +939,6 @@ function initVR() {
         
     } catch (error) {
         console.error("Error al inicializar VR:", error);
-        // Crear botón VR simple como fallback
         const fallbackVRButton = document.createElement('button');
         fallbackVRButton.textContent = 'VR NO DISPONIBLE';
         fallbackVRButton.classList.add('vr-button');
@@ -1076,106 +948,49 @@ function initVR() {
     }
 }
 
-/** ========= FUNCIÓN PARA MOSTRAR LETRERO VR - DURACIÓN PROLONGADA ========= */
+/** ========= FUNCIÓN PARA MOSTRAR LETRERO VR ========= */
 function showVREnterSign() {
     const vrSign = document.getElementById('vr-enter-sign');
-    const vrLife = document.getElementById('vr-life');
-    const vrEnemies = document.getElementById('vr-enemies');
-    const lifeElement = document.getElementById('life');
-    const enemiesCountElement = document.getElementById('enemiesCount');
+    const vrTotal = document.getElementById('vr-total');
+    const vrHit = document.getElementById('vr-hit');
     const closeButton = document.getElementById('close-vr-sign');
     
-    if (vrSign && vrLife && vrEnemies && lifeElement && enemiesCountElement && closeButton) {
-        // Cancelar timer anterior si existe
-        if (vrSignTimer) {
-            clearInterval(vrSignTimer);
-        }
-        
-        // Reiniciar tiempo
-        remainingTime = CONFIG.VR_SIGN_DURATION;
-        
+    if (vrSign && vrTotal && vrHit && closeButton) {
         // Actualizar valores
-        vrLife.textContent = lifeElement.textContent;
-        vrEnemies.textContent = enemiesCountElement.textContent;
-        
-        // Actualizar contador inicial
-        updateVRTimer();
+        vrTotal.textContent = CONFIG.ENEMY_COUNT;
+        vrHit.textContent = hitCount;
         
         // Mostrar letrero
         vrSign.style.display = 'block';
         
-        console.log("Letrero VR mostrado por 10 minutos");
+        console.log("Letrero VR mostrado");
         
         // Forzar que el HUD esté visible
         const hud = document.getElementById('hud');
         if (hud) {
-            hud.style.display = 'block';
-            hud.classList.add('vr-mode');
-        }
-        
-        // Mostrar indicador de HUD activo
-        const hudIndicator = document.querySelector('.hud-active-indicator');
-        if (hudIndicator) {
-            hudIndicator.style.display = 'block';
+            hud.style.display = 'flex';
         }
         
         // Configurar botón de cierre
         closeButton.onclick = hideVREnterSign;
-        
-        // Iniciar contador regresivo
-        vrSignTimer = setInterval(() => {
-            remainingTime--;
-            updateVRTimer();
-            
-            if (remainingTime <= 0) {
-                hideVREnterSign();
-            }
-        }, 1000); // Actualizar cada segundo
-    }
-}
-
-/** ========= ACTUALIZAR CONTADOR DEL LETRERO VR ========= */
-function updateVRTimer() {
-    const timerMinutes = document.getElementById('timer-minutes');
-    const timerSeconds = document.getElementById('timer-seconds');
-    
-    if (timerMinutes && timerSeconds) {
-        const minutes = Math.floor(remainingTime / 60);
-        const seconds = remainingTime % 60;
-        
-        timerMinutes.textContent = minutes.toString().padStart(2, '0');
-        timerSeconds.textContent = seconds.toString().padStart(2, '0');
     }
 }
 
 /** ========= OCULTAR LETRERO VR ========= */
 function hideVREnterSign() {
     const vrSign = document.getElementById('vr-enter-sign');
-    
     if (vrSign) {
         vrSign.style.display = 'none';
         console.log("Letrero VR ocultado");
-        
-        // Limpiar timer
-        if (vrSignTimer) {
-            clearInterval(vrSignTimer);
-            vrSignTimer = null;
-        }
-        
-        // Ocultar indicador de HUD activo
-        const hudIndicator = document.querySelector('.hud-active-indicator');
-        if (hudIndicator) {
-            hudIndicator.style.display = 'none';
-        }
     }
 }
 
 // -------------------------------------------------------------------
 // ---------- GENERACIÓN DEL LABERINTO ----------
 // -------------------------------------------------------------------
-/** ========= GENERACIÓN DEL LABERINTO (altura reducida) ========= */
+/** ========= GENERACIÓN DEL LABERINTO (SIN PISTAS FLOTANTES) ========= */
 function generateMaze(rows, cols, cellSize) {
-    console.log(`Generando laberinto ${rows}x${cols} (altura: ${CONFIG.WALL_HEIGHT})...`);
+    console.log(`Generando laberinto ${rows}x${cols}...`);
     
     const grid = [];
     for (let r = 0; r < rows; r++) {
@@ -1240,11 +1055,11 @@ function generateMaze(rows, cols, cellSize) {
     
     const startX = -(cols * cellSize) / 2;
     const startZ = -(rows * cellSize) / 2;
-    const wallHeightHalf = CONFIG.WALL_HEIGHT / 2; // Usar la nueva altura
+    const wallHeightHalf = CONFIG.WALL_HEIGHT / 2;
     
     const wallGeo = new THREE.BoxGeometry(
         cellSize + CONFIG.WALL_THICKNESS, 
-        CONFIG.WALL_HEIGHT, // Altura reducida
+        CONFIG.WALL_HEIGHT,
         CONFIG.WALL_THICKNESS
     );
     
@@ -1266,24 +1081,24 @@ function generateMaze(rows, cols, cellSize) {
             (error) => {
                 console.warn("Error al cargar textura de paredes:", error);
                 wallMaterial = new THREE.MeshStandardMaterial({
-                    color: 0x666666,
-                    roughness: 0.8,
-                    metalness: 0.2
+                    color: 0xAAAAAA, // Color gris claro para día
+                    roughness: 0.7,
+                    metalness: 0.1
                 });
             }
         );
         
         wallMaterial = new THREE.MeshStandardMaterial({
             map: wallTexture,
-            roughness: 0.8,
-            metalness: 0.2
+            roughness: 0.7,
+            metalness: 0.1
         });
     } catch (error) {
         console.warn("Error al crear material:", error);
         wallMaterial = new THREE.MeshStandardMaterial({
-            color: 0x666666,
-            roughness: 0.8,
-            metalness: 0.2
+            color: 0xAAAAAA,
+            roughness: 0.7,
+            metalness: 0.1
         });
     }
     
@@ -1320,176 +1135,21 @@ function generateMaze(rows, cols, cellSize) {
         }
     }
     
-    // Calcular y marcar el camino hacia el portal
-    const path = findPathToGoal(grid, rows, cols);
-    createPathMarkers(path, startX, startZ, cellSize);
-    
     scene.userData.maze = { 
         grid, 
         startX, 
         startZ, 
         rows, 
         cols, 
-        cellSize,
-        path: path
+        cellSize
     };
     
-    console.log(`Laberinto generado: ${rows}x${cols} (altura: ${CONFIG.WALL_HEIGHT}) con marcadores de ruta`);
+    console.log(`Laberinto generado: ${rows}x${cols}`);
     return grid;
 }
 
-/** ========= ENCONTRAR CAMINO AL PORTAL ========= */
-function findPathToGoal(grid, rows, cols) {
-    console.log("Calculando camino hacia el portal...");
-    
-    // El portal está en la esquina inferior derecha (última celda)
-    const startCell = grid[0][0]; // Celda inicial
-    const goalCell = grid[rows-1][cols-1]; // Celda del portal
-    
-    // Usar BFS para encontrar el camino
-    const queue = [{ cell: startCell, path: [startCell] }];
-    const visited = new Set();
-    visited.add(startCell);
-    
-    while (queue.length > 0) {
-        const { cell, path } = queue.shift();
-        
-        // Si llegamos al portal
-        if (cell === goalCell) {
-            console.log("Camino encontrado con", path.length, "celdas");
-            return path;
-        }
-        
-        // Obtener vecinos accesibles
-        const neighbors = [];
-        const { r, c, walls } = cell;
-        
-        // Norte (pared 0)
-        if (!walls[0] && r > 0) neighbors.push(grid[r-1][c]);
-        // Este (pared 1)
-        if (!walls[1] && c < cols-1) neighbors.push(grid[r][c+1]);
-        // Sur (pared 2)
-        if (!walls[2] && r < rows-1) neighbors.push(grid[r+1][c]);
-        // Oeste (pared 3)
-        if (!walls[3] && c > 0) neighbors.push(grid[r][c-1]);
-        
-        for (const neighbor of neighbors) {
-            if (!visited.has(neighbor)) {
-                visited.add(neighbor);
-                queue.push({ 
-                    cell: neighbor, 
-                    path: [...path, neighbor] 
-                });
-            }
-        }
-    }
-    
-    console.log("No se encontró camino al portal");
-    return [];
-}
-
-/** ========= CREAR MARCADORES DE RUTA ========= */
-function createPathMarkers(path, startX, startZ, cellSize) {
-    if (path.length === 0) return;
-    
-    console.log("Creando marcadores de ruta...");
-    
-    const markerGeo = new THREE.CylinderGeometry(8, 8, 2, 16);
-    const markerMat = new THREE.MeshStandardMaterial({ 
-        color: 0x22ff88,
-        emissive: 0x22ff88,
-        emissiveIntensity: 0.5,
-        transparent: true,
-        opacity: 0.8
-    });
-    
-    const arrowGeo = new THREE.ConeGeometry(6, 15, 8);
-    const arrowMat = new THREE.MeshStandardMaterial({ 
-        color: 0x22ff88,
-        emissive: 0x22ff88,
-        emissiveIntensity: 0.7
-    });
-    
-    // Crear marcadores en cada celda del camino
-    for (let i = 0; i < path.length; i++) {
-        const cell = path[i];
-        const cx = startX + cell.c * cellSize + cellSize / 2;
-        const cz = startZ + cell.r * cellSize + cellSize / 2;
-        
-        // Marcador de piso (solo cada 3 celdas para no saturar)
-        if (i % 3 === 0 || i === path.length - 1) {
-            const marker = new THREE.Mesh(markerGeo, markerMat);
-            marker.position.set(cx, 0.5, cz);
-            marker.rotation.x = Math.PI / 2;
-            marker.receiveShadow = true;
-            scene.add(marker);
-            
-            // Hacer que el marcador parpadee
-            animateMarker(marker, i * 100);
-        }
-        
-        // Flecha indicadora (solo en puntos clave)
-        if (i < path.length - 1 && (i % 5 === 0 || i === path.length - 2)) {
-            const nextCell = path[i + 1];
-            const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-            arrow.position.set(cx, 15, cz);
-            
-            // Calcular dirección hacia la siguiente celda
-            const dx = (nextCell.c - cell.c) * cellSize;
-            const dz = (nextCell.r - cell.r) * cellSize;
-            const angle = Math.atan2(dx, dz);
-            arrow.rotation.x = Math.PI / 2;
-            arrow.rotation.z = -angle;
-            
-            scene.add(arrow);
-            
-            // Animación de flotación
-            animateArrow(arrow, i * 200);
-        }
-    }
-
-}
-
-/** ========= ANIMAR MARCADORES ========= */
-function animateMarker(marker, delay) {
-    const originalY = marker.position.y;
-    let time = delay;
-    
-    function animate() {
-        time += 0.05;
-        marker.position.y = originalY + Math.sin(time) * 2;
-        marker.material.opacity = 0.6 + Math.sin(time * 2) * 0.2;
-        
-        // Continuar animación
-        if (marker.parent) {
-            requestAnimationFrame(animate);
-        }
-    }
-    
-    setTimeout(() => animate(), delay % 1000);
-}
-
-/** ========= ANIMAR FLECHAS ========= */
-function animateArrow(arrow, delay) {
-    const originalY = arrow.position.y;
-    let time = delay;
-    
-    function animate() {
-        time += 0.03;
-        arrow.position.y = originalY + Math.sin(time) * 3;
-        arrow.rotation.y += 0.01;
-        
-        // Continuar animación
-        if (arrow.parent) {
-            requestAnimationFrame(animate);
-        }
-    }
-    
-    setTimeout(() => animate(), delay % 1000);
-}
-
 // -------------------------------------------------------------------
-// ---------- CREACIÓN DE ENEMIGOS ----------
+// ---------- CREACIÓN DE ENEMIGOS (CUBOS ROJOS) ----------
 // -------------------------------------------------------------------
 function spawnEnemiesInMaze(count) {
     const maze = scene.userData.maze;
@@ -1500,14 +1160,7 @@ function spawnEnemiesInMaze(count) {
     
     const { startX, startZ, rows, cols, cellSize } = maze;
     
-    const enemyGeo = new THREE.BoxGeometry(15, 15, 15);
-    const enemyMat = new THREE.MeshStandardMaterial({ 
-        color: 0xdd4444, 
-        roughness: 0.8,
-        emissive: 0x220000,
-        emissiveIntensity: 0.1
-    });
-    
+    // Crear enemigos tipo cubo rojo
     let placed = 0;
     const maxAttempts = count * 10;
     let attempts = 0;
@@ -1537,34 +1190,64 @@ function spawnEnemiesInMaze(count) {
         
         if (tooClose) continue;
         
-        const enemy = new THREE.Mesh(enemyGeo, enemyMat);
-        enemy.position.set(x, 7.5, z);
-        enemy.castShadow = true;
-        enemy.receiveShadow = true;
-        
-        enemy.userData = { 
-            health: CONFIG.ENEMY_HEALTH, 
-            alive: true, 
-            speed: CONFIG.ENEMY_SPEED_MIN + Math.random() * (CONFIG.ENEMY_SPEED_MAX - CONFIG.ENEMY_SPEED_MIN),
-            lastAttack: 0
-        };
-        
-        scene.add(enemy);
-        
-        enemy.updateMatrixWorld();
-        const enemyBox = new THREE.Box3().setFromObject(enemy);
-        
-        enemies.push(enemy);
-        physicsObjects.push({ 
-            mesh: enemy, 
-            boundingBox: enemyBox, 
-            mass: 50 
-        });
-        
+        // Crear enemigo con forma de cubo rojo
+        addRedCubeEnemy(x, z);
         placed++;
     }
     
-    console.log(`${placed} enemigos colocados en el laberinto`);
+    // Actualizar UI
+    if (hudTotal) hudTotal.textContent = String(CONFIG.ENEMY_COUNT);
+    if (hudHit) hudHit.textContent = String(hitCount);
+    
+    console.log(`${placed} enemigos (cubos rojos) colocados en el laberinto`);
+}
+
+/** ========= CREAR ENEMIGO CUBO ROJO ========= */
+function addRedCubeEnemy(x, z) {
+    const y = 7.5;
+    
+    // Crear material para cubo rojo
+    const mat = new THREE.MeshStandardMaterial({
+        color: 0xff4444, // ROJO
+        roughness: 0.4,
+        metalness: 0.2,
+        emissive: 0x440000, // Emisión roja tenue
+        emissiveIntensity: 0.3
+    });
+    
+    // Cuerpo del cubo
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(15, 15, 15),
+        mat
+    );
+    body.castShadow = true;
+    body.receiveShadow = true;
+    
+    const g = new THREE.Group();
+    g.position.set(x, y, z);
+    g.add(body);
+    
+    // Efecto de rotación lenta
+    g.userData.rotationSpeed = (Math.random() - 0.5) * 0.02;
+    
+    g.userData.mat = mat;
+    g.userData.alive = true;
+    g.userData.health = CONFIG.ENEMY_HEALTH;
+    g.userData.speed = CONFIG.ENEMY_SPEED_MIN + Math.random() * (CONFIG.ENEMY_SPEED_MAX - CONFIG.ENEMY_SPEED_MIN);
+    g.userData.lastAttack = 0;
+    g.userData.touched = false;
+    
+    scene.add(g);
+    enemies.push(g);
+    
+    // Agregar a física
+    g.updateMatrixWorld();
+    const enemyBox = new THREE.Box3().setFromObject(g);
+    physicsObjects.push({ 
+        mesh: g, 
+        boundingBox: enemyBox, 
+        mass: 50 
+    });
 }
 
 // -------------------------------------------------------------------
@@ -1609,7 +1292,7 @@ function createGoalAtEnd() {
 // ---------- PARTÍCULAS DEL PORTAL ----------
 // -------------------------------------------------------------------
 function createPortalParticles(x, z) {
-    const particleCount = 50; // Reducido para mejor rendimiento
+    const particleCount = 30;
     const particleGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
@@ -1623,9 +1306,9 @@ function createPortalParticles(x, z) {
         positions[i * 3 + 1] = height;
         positions[i * 3 + 2] = z + Math.sin(angle) * radius;
         
-        colors[i * 3] = 0.2 + Math.random() * 0.3;
+        colors[i * 3] = 0.2;
         colors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
-        colors[i * 3 + 2] = 0.3 + Math.random() * 0.2;
+        colors[i * 3 + 2] = 0.3;
     }
     
     particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -1666,7 +1349,6 @@ function createFloor() {
     const floorTexture = textureLoader.load(CONFIG.FLOOR_TEX, (tex) => {
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.RepeatWrapping;
-        // Ajustar el repeat según el tamaño del laberinto
         tex.repeat.set(rows / 2, cols / 2);
     });
     
@@ -1698,14 +1380,15 @@ function createGameScene() {
     // Limpiar escena si ya existe
     physicsObjects = [];
     enemies = [];
+    hitCount = 0;
     
-    // Generar laberinto
+    // Generar laberinto (SIN PISTAS FLOTANTES)
     generateMaze(CONFIG.MAZE_ROWS, CONFIG.MAZE_COLS, CONFIG.CELL_SIZE);
     
     // Crear piso
     createFloor();
     
-    // Colocar enemigos
+    // Colocar enemigos (cubos rojos)
     spawnEnemiesInMaze(CONFIG.ENEMY_COUNT);
     
     // Crear portal objetivo
@@ -1885,7 +1568,7 @@ function resolveCollisions(curr, next) {
         }
     }
     
-    // Enemigos
+    // Enemigos (cubos rojos)
     for (const enemy of enemies) {
         if (!enemy.userData.alive) continue;
         
@@ -1901,8 +1584,16 @@ function resolveCollisions(curr, next) {
             next.x += nx * push;
             next.z += nz * push;
             
-            // Daño al jugador
-            takeDamage(CONFIG.ENEMY_ATTACK_DAMAGE);
+            // Si el enemigo toca al jugador
+            if (!enemy.userData.touched && enemy.userData.alive) {
+                enemy.userData.touched = true;
+                enemy.userData.mat.color.set(0xff0000); // Rojo más intenso
+                enemy.userData.mat.emissive = new THREE.Color(0xff2222);
+                enemy.userData.mat.emissiveIntensity = 0.8;
+                
+                // Daño al jugador
+                takeDamage(CONFIG.ENEMY_ATTACK_DAMAGE);
+            }
         }
     }
     
@@ -1911,81 +1602,34 @@ function resolveCollisions(curr, next) {
 
 /** ========= ACTUALIZAR HUD COMPLETO ========= */
 function updateHUD() {
-    const enemiesCount = document.getElementById('enemiesCount');
-    const lifeElement = document.getElementById('life');
-    const lifeBar = document.getElementById('life-bar');
-    
-    if (enemiesCount && lifeElement && lifeBar) {
-        // Contar enemigos vivos
-        const aliveEnemies = enemies.filter(e => e.userData.alive).length;
-        enemiesCount.textContent = `${aliveEnemies}/${CONFIG.ENEMY_COUNT}`;
-        
-        // Actualizar barra de vida
-        const currentLife = parseInt(lifeElement.textContent);
-        lifeBar.style.width = `${currentLife}%`;
-        
-        // Cambiar color de la barra según la vida
-        if (currentLife <= 30) {
-            lifeBar.style.background = 'linear-gradient(90deg, #ff4444, #ff0000)';
-        } else if (currentLife <= 60) {
-            lifeBar.style.background = 'linear-gradient(90deg, #ffff00, #ffaa00)';
-        } else {
-            lifeBar.style.background = 'linear-gradient(90deg, #22ff88, #00ff00)';
-        }
-    }
+    if (hudTotal) hudTotal.textContent = String(CONFIG.ENEMY_COUNT);
+    if (hudHit) hudHit.textContent = String(hitCount);
     
     // También actualizar el letrero VR si está visible
     const vrSign = document.getElementById('vr-enter-sign');
     if (vrSign && vrSign.style.display === 'block') {
-        const vrLife = document.getElementById('vr-life');
-        const vrEnemies = document.getElementById('vr-enemies');
-        const lifeElement = document.getElementById('life');
-        const enemiesCountElement = document.getElementById('enemiesCount');
+        const vrTotal = document.getElementById('vr-total');
+        const vrHit = document.getElementById('vr-hit');
         
-        if (vrLife && vrEnemies && lifeElement && enemiesCountElement) {
-            vrLife.textContent = lifeElement.textContent;
-            vrEnemies.textContent = enemiesCountElement.textContent;
+        if (vrTotal && vrHit) {
+            vrTotal.textContent = CONFIG.ENEMY_COUNT;
+            vrHit.textContent = hitCount;
         }
     }
 }
 
 /** ========= DAÑO AL JUGADOR ========= */
 function takeDamage(amount) {
-    const lifeElement = document.getElementById('life');
-    if (!lifeElement) return;
-    
-    let currentLife = parseInt(lifeElement.textContent);
-    currentLife = Math.max(0, currentLife - amount);
-    lifeElement.textContent = currentLife;
-    
-    // Efecto visual en el HUD al recibir daño
+    // Efecto visual en pantalla
     const hud = document.getElementById('hud');
     if (hud) {
-        hud.style.borderColor = '#ff4444';
-        hud.style.boxShadow = '0 0 25px rgba(255, 68, 68, 0.8)';
+        hud.style.borderColor = '#ff0000';
+        hud.style.boxShadow = '0 0 30px rgba(255, 0, 0, 0.9)';
         
         setTimeout(() => {
-            if (isInVRMode) {
-                hud.style.borderColor = '#22ff88';
-                hud.style.boxShadow = '0 0 40px rgba(34, 255, 136, 0.9)';
-            } else {
-                hud.style.borderColor = '#22ff88';
-                hud.style.boxShadow = '0 0 30px rgba(34, 255, 136, 0.8)';
-            }
+            hud.style.borderColor = '#ff4444';
+            hud.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.4)';
         }, 500);
-    }
-    
-    // Actualizar letrero VR si está visible
-    const vrLife = document.getElementById('vr-life');
-    if (vrLife) {
-        vrLife.textContent = currentLife;
-    }
-    
-    // Actualizar HUD
-    updateHUD();
-    
-    if (currentLife <= 0) {
-        gameOver();
     }
 }
 
@@ -1998,33 +1642,23 @@ function setHUDForVR(isVR) {
     
     if (isVR) {
         // Modo VR: posicionar mejor para visibilidad
-        hud.style.top = '40px';
         hud.style.left = '40px';
-        hud.classList.add('vr-mode');
+        hud.style.top = '40px';
         
         // Mostrar siempre en VR
-        hud.style.display = 'block';
+        hud.style.display = 'flex';
         
         console.log("HUD configurado para modo VR");
     } else {
         // Modo escritorio
-        hud.style.top = '30px';
-        hud.style.left = '30px';
-        hud.classList.remove('vr-mode');
-    }
-}
-
-/** ========= MOSTRAR/OCULTAR HUD ========= */
-function toggleHUD(show) {
-    const hud = document.getElementById('hud');
-    if (hud) {
-        hud.style.display = show ? 'block' : 'none';
+        hud.style.left = '20px';
+        hud.style.top = '20px';
     }
 }
 
 /** ========= GAME OVER ========= */
 function gameOver() {
-    showMessage("GAME OVER\nLos aliens te atraparon", false);
+    showMessage("GAME OVER", false);
     
     // Detener el juego
     renderer.setAnimationLoop(null);
@@ -2044,16 +1678,6 @@ function restartGame() {
     const restartBtn = document.getElementById('restartBtn');
     if (messageEl) messageEl.style.display = 'none';
     if (restartBtn) restartBtn.style.display = 'none';
-    
-    // Restaurar vida
-    const lifeElement = document.getElementById('life');
-    if (lifeElement) lifeElement.textContent = '100';
-    
-    // Actualizar letrero VR si está visible
-    const vrLife = document.getElementById('vr-life');
-    if (vrLife) {
-        vrLife.textContent = '100';
-    }
     
     // Ocultar letrero VR si está visible
     hideVREnterSign();
@@ -2075,9 +1699,27 @@ function restartGame() {
         }
     }
     
+    // Limpiar fondo
+    while (bgScene.children.length > 0) {
+        const child = bgScene.children[0];
+        bgScene.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+            } else {
+                child.material.dispose();
+            }
+        }
+    }
+    
     // Reinicializar variables
     physicsObjects = [];
     enemies = [];
+    hitCount = 0;
+    
+    // Recrear cielo y nubes
+    initSky();
     
     // Crear nuevo escenario
     createGameScene();
@@ -2088,10 +1730,7 @@ function restartGame() {
     // Asegurar que el HUD esté visible
     const hud = document.getElementById('hud');
     if (hud) {
-        hud.style.display = 'block';
-        if (isInVRMode) {
-            hud.classList.add('vr-mode');
-        }
+        hud.style.display = 'flex';
     }
     
     // Reiniciar loop
@@ -2127,7 +1766,7 @@ function checkVictory() {
 /** ========= EFECTOS DE VICTORIA ========= */
 function createVictoryEffects() {
     // Crear confeti
-    const confettiCount = 100; // Reducido para mejor rendimiento
+    const confettiCount = 80;
     const confettiGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(confettiCount * 3);
     const colors = new Float32Array(confettiCount * 3);
@@ -2135,7 +1774,7 @@ function createVictoryEffects() {
     for (let i = 0; i < confettiCount; i++) {
         const i3 = i * 3;
         positions[i3] = player.position.x + (Math.random() - 0.5) * 50;
-        positions[i3 + 1] = player.position.y + Math.random() * 100;
+        positions[i3 + 1] = player.position.y + Math.random() * 80;
         positions[i3 + 2] = player.position.z + (Math.random() - 0.5) * 50;
         
         colors[i3] = Math.random();
@@ -2147,7 +1786,7 @@ function createVictoryEffects() {
     confettiGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     
     const confettiMat = new THREE.PointsMaterial({
-        size: 3,
+        size: 2.5,
         vertexColors: true,
         transparent: true,
         opacity: 0.8
@@ -2161,13 +1800,15 @@ function createVictoryEffects() {
         const positions = confettiGeo.attributes.position.array;
         for (let i = 0; i < confettiCount; i++) {
             const i3 = i * 3;
-            positions[i3 + 1] -= 1;
+            positions[i3 + 1] -= 0.8;
             if (positions[i3 + 1] < player.position.y - 20) {
-                positions[i3 + 1] = player.position.y + Math.random() * 100;
+                positions[i3 + 1] = player.position.y + Math.random() * 80;
             }
         }
         confettiGeo.attributes.position.needsUpdate = true;
-        requestAnimationFrame(animateConfetti);
+        if (confetti.parent) {
+            requestAnimationFrame(animateConfetti);
+        }
     }
     animateConfetti();
 }
@@ -2203,15 +1844,46 @@ function gameLoop() {
         const p = player.position;
         if (skyMesh) skyMesh.position.copy(p);
         if (starField) starField.position.copy(p);
+        
+        // Animar nubes
+        for (let i = 0; i < bgScene.children.length; i++) {
+            const child = bgScene.children[i];
+            if (child.userData && child.userData.speed) {
+                child.userData.angle += child.userData.speed * dt * 0.01;
+                child.position.x = Math.cos(child.userData.angle) * child.userData.radius;
+                child.position.z = Math.sin(child.userData.angle) * child.userData.radius;
+            }
+        }
 
         // Animar partículas del portal
         animatePortalParticles(dt);
+        
+        // Animar enemigos (cubos rojos - rotación lenta)
+        for (const enemy of enemies) {
+            if (enemy.userData.alive && enemy.userData.rotationSpeed) {
+                enemy.rotation.y += enemy.userData.rotationSpeed;
+            }
+        }
 
         // Actualizar UI
         updateHUD();
 
-        // Verificar victoria
-        checkVictory();
+        // Verificar victoria (todos los enemigos eliminados)
+        const aliveEnemies = enemies.filter(e => e.userData.alive).length;
+        if (aliveEnemies === 0) {
+            showMessage("¡VICTORIA!\n", true);
+            renderer.setAnimationLoop(null);
+            
+            const restartBtn = document.getElementById('restartBtn');
+            if (restartBtn) {
+                restartBtn.style.display = 'block';
+                restartBtn.onclick = restartGame;
+            }
+            
+            hideVREnterSign();
+            createVictoryEffects();
+            return;
+        }
 
         // Renderizar
         renderer.clear();
@@ -2248,8 +1920,7 @@ function initGame() {
         // Mostrar HUD inmediatamente
         const hud = document.getElementById('hud');
         if (hud) {
-            hud.style.display = 'block';
-            // Configurar HUD según el modo inicial
+            hud.style.display = 'flex';
             setHUDForVR(false);
         }
         
@@ -2277,7 +1948,6 @@ function initGame() {
         renderer.xr.addEventListener('sessionstart', () => {
             console.log("Sesión VR iniciada");
             setHUDForVR(true);
-            // Mostrar letrero después de un breve retraso
             setTimeout(() => {
                 showVREnterSign();
             }, 1000);
@@ -2286,7 +1956,6 @@ function initGame() {
         renderer.xr.addEventListener('sessionend', () => {
             console.log("Sesión VR finalizada");
             setHUDForVR(false);
-            // Ocultar letrero al salir de VR
             hideVREnterSign();
         });
         
@@ -2367,19 +2036,7 @@ document.addEventListener('DOMContentLoaded', () => {
         restartBtn.onclick = restartGame;
     }
     
-    // Botón para alternar HUD (opcional, para testing)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'h' || e.key === 'H') {
-            const hud = document.getElementById('hud');
-            if (hud) {
-                const isVisible = hud.style.display !== 'none';
-                toggleHUD(!isVisible);
-                console.log(`HUD ${!isVisible ? 'mostrado' : 'ocultado'}`);
-            }
-        }
-    });
-    
-    // Configurar botón de cierre del letrero VR (si el DOM ya está cargado)
+    // Configurar botón de cierre del letrero VR
     const closeVRSignBtn = document.getElementById('close-vr-sign');
     if (closeVRSignBtn) {
         closeVRSignBtn.addEventListener('click', hideVREnterSign);
